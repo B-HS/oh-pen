@@ -1,6 +1,9 @@
 import { cp, mkdir, rm } from "node:fs/promises"
 import { join } from "node:path"
 import { exists, listFiles, sha256 } from "../src/fs.ts"
+import { docPages, renderDoc } from "./site/docs.ts"
+import { docPage, docsIndexPage, homePage, notFoundPage } from "./site/pages.ts"
+import { siteCss } from "./site/theme.ts"
 
 const root = join(import.meta.dir, "..")
 const dist = join(root, "dist")
@@ -92,64 +95,30 @@ bun run "$TMP_DIR/oh-pencode.ts" "$COMMAND" --assets-dir "$TMP_DIR/assets" "$@"
   await Bun.write(join(dist, "install.sh"), script)
 }
 
-const buildLandingPage = async (version: string) => {
-  const html = `<!doctype html>
-<html lang="ko">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>oh-pencode</title>
-    <style>
-      :root { color-scheme: light dark; }
-      body {
-        margin: 0 auto; max-width: 52rem; padding: 3rem 1.5rem 6rem;
-        font: 16px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      }
-      h1 { font-size: 2rem; margin: 0 0 .5rem; }
-      .sub { opacity: .7; margin: 0 0 2.5rem; }
-      h2 { font-size: 1.15rem; margin: 2.5rem 0 .75rem; }
-      pre {
-        background: color-mix(in srgb, currentColor 7%, transparent);
-        padding: .9rem 1.1rem; border-radius: .5rem; overflow-x: auto;
-      }
-      code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em; }
-      p, li { opacity: .92; }
-    </style>
-  </head>
-  <body>
-    <h1>oh-pencode</h1>
-    <p class="sub">OpenCode V2용 pen 에이전트 세트 installer · v${version}</p>
+const buildDocsPages = async () => {
+  const sorted = [...docPages].sort((a, b) => a.order - b.order)
+  await mkdir(join(dist, "docs"), { recursive: true })
+  await mkdir(join(dist, "docs", "history"), { recursive: true })
+  await Bun.write(join(dist, "site.css"), siteCss)
+  await Bun.write(join(dist, "index.html"), homePage())
+  await Bun.write(join(dist, "docs", "index.html"), docsIndexPage())
+  await Bun.write(join(dist, "404.html"), notFoundPage())
 
-    <h2>설치</h2>
-    <pre><code>curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash</code></pre>
-
-    <h2>미리보기</h2>
-    <pre><code>curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- --dry-run</code></pre>
-
-    <h2>검증 / 제거</h2>
-    <pre><code>curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- verify
-curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- uninstall</code></pre>
-
-    <h2>설치되는 것</h2>
-    <ul>
-      <li><code>pen</code> — 메인 오케스트레이터 (build/plan 대체)</li>
-      <li><code>sub-pen</code> — 상세 계약을 받아 실행하는 실행자</li>
-      <li><code>research-pen</code> — 기획·조사</li>
-      <li><code>explore-pen</code> — 코드베이스 탐색</li>
-      <li><code>doc-pen</code> — 외부 문서 심층 분석</li>
-      <li><code>verify-pen</code> — 독립 검증</li>
-      <li><code>security-pen</code> — 보안 감사</li>
-    </ul>
-
-    <h2>요구 사항</h2>
-    <ul>
-      <li>OpenCode V2 (<code>opencode --version</code>)</li>
-      <li>Bun (<code>bun --version</code>)</li>
-    </ul>
-  </body>
-</html>
-`
-  await Bun.write(join(dist, "index.html"), html)
+  const written: string[] = ["site.css", "index.html", "docs/index.html", "404.html"]
+  for (const [index, doc] of sorted.entries()) {
+    const rendered = await renderDoc(doc)
+    const prev = sorted[index - 1]
+    const next = sorted[index + 1]
+    const up = "../".repeat(doc.href.split("/").length - 1)
+    const html = docPage(doc, rendered, {
+      ...(prev ? { prev: { href: `${up}${prev.href}`, title: prev.title } } : {}),
+      ...(next ? { next: { href: `${up}${next.href}`, title: next.title } } : {}),
+    })
+    const target = join(dist, doc.href)
+    await Bun.write(target, html)
+    written.push(doc.href)
+  }
+  return written
 }
 
 const buildManifest = async (version: string) => {
@@ -198,10 +167,10 @@ const main = async () => {
   await cp(srcAssets, distAssets, { recursive: true })
   await buildInstallerBundle()
   await buildInstallScript(version)
-  await buildLandingPage(version)
+  const pages = await buildDocsPages()
   const assets = await buildManifest(version)
   await verifyIntegrity(assets)
-  console.log(`dist/ 생성 완료 — v${version}, ${assets.length} assets`)
+  console.log(`dist/ 생성 완료 — v${version}, ${assets.length} assets, ${pages.length} pages`)
   for (const asset of assets) console.log(`  ${asset}`)
 }
 
