@@ -1,5 +1,49 @@
 # PROCESS
 
+## 작업: 에이전트 자율 실행 고도화
+
+- [x] a. 사용자 결정 확정 — 모델은 설치값 기본·명시 override, 일반 commit/push 자동 허용, doc-pen은 `docs/**` 문서화
+- [x] b. 7개 custom agent 프롬프트·권한 고도화 — 자율 workflow·모델 override·역할 경계·untrusted content 계약 반영
+- [x] c. asset 무결성 검사를 역할 계약까지 강화 — Git·docs·시크릿·역할별 permission 필수 조각 단언
+- [x] d. README·설계·합의 문서를 실제 동작과 동기화 — D13~D16 기록
+- [x] e. 위험 비례 검증 및 OpenCode 해석 확인 — test 5건·typecheck·site build·v2.0.10 debug agents 통과
+- [x] f. 선별 staging·Conventional Commit·일반 push — `4c5d956`을 `origin/main`에 push 완료
+
+### 상세
+
+1. `pen`은 매 작업 workflow·모델 질문을 제거하고 작업 성격에 따라 직접 실행 또는 위임하며, 사용자 요청 범위의 구현·검증·commit·push를 중단 없이 완료한다.
+2. 설치 시 `convention`·`inherit`·사용자 지정 모델을 지원하고, 런타임 모델 변경은 사용자가 명시했을 때만 수행한다.
+3. `doc-pen`은 재사용 가치가 있는 공식 사용법을 main이 지정한 `docs/**` 경로에 저장하고 다른 경로는 수정하지 않는다.
+4. 일반 Git commit·push는 `pen`에 허용하고, force push·이력 파괴·복구하기 어려운 삭제만 금지한다. subagent는 Git 통합을 하지 않는다.
+5. 읽기 전용 역할은 불필요한 mutation 도구를 차단하되 조사·탐색·검증의 자율 실행에 필요한 도구는 유지한다.
+
+## 작업: assets/agents 품질 감사
+
+- [x] a. 감사 범위·실행 방식 확정 — `assets/agents` 전수, workflow 미사용, 컨펌 전 에이전트 파일 수정 금지
+- [x] b. 에이전트별 역할·권한·프롬프트 계약 감사 — 9개 asset 전수 확인
+- [x] c. OpenCode V2 공식 계약·다중 모델 호환성 대조 — v2.0.10 `debug agents` 및 최신 공식 문서 대조
+- [x] d. 고도화 필요성·우선순위·구체 변경안 사용자 컨펌 — 전면 고도화 및 자율 Git·사용자 모델·doc 문서화 승인
+
+### 감사 기준
+
+1. 역할 경계와 위임 조건이 겹치지 않고 선택 가능해야 한다.
+2. 지시가 특정 모델의 추론 습관에 의존하지 않고 완료 조건·근거·보고 형식을 명시해야 한다.
+3. 권한은 역할 수행에 필요한 최소 범위이며 프롬프트 계약과 실제 frontmatter가 일치해야 한다.
+4. OpenCode V2의 agent·permission·system 대체 동작과 현재 설치·검증 계약에 맞아야 한다.
+5. 고도화안은 실제 파일 변경 전에 사용자 확인을 받는다.
+
+### 감사 결과
+
+- 공통: Markdown body가 provider별 기본 system prompt를 대체하므로, 현재 본문만으로 tool loop·지속 실행·권한 경계까지 자급자족해야 한다.
+- 공통: 기본 permission이 allow이므로 edit·shell만 막아도 MCP·execute 등 새 action은 허용된다. 읽기 전용 agent는 deny-all 뒤 역할별 allow가 필요하다.
+- `pen`: workflow 답변 전 조사 허용 문구, 영구 설정을 바꾸면서 선택을 저장하지 않는다는 문구, auto-mode와 실제 permission 사이에 충돌이 있다.
+- `pen`·`sub-pen`: 읽기/진단 요청과 변경 요청의 권한 경계, 외부 문서·저장소의 prompt injection 무시 규칙이 부족하다.
+- `doc-pen`: 전 문서 통독·원문 전재 지시는 대형 문서와 인용 제한에서 비현실적이며 핵심 계약 추출 방식으로 바꿔야 한다.
+- `verify-pen`: 실제 출력 전체 전재는 시크릿·토큰·출력량 위험이 있고, 검증 명령의 파일 생성 가능성과 무편집 계약을 구분하지 않는다.
+- `security-pen`: 정적 읽기만으로 의존성 취약점·실제 도달 가능성을 완전히 판정한다고 기대해 역할과 권한이 충돌한다.
+- `research-pen`·`doc-pen`: 조사와 공식 문서 계약 추출의 선택 기준이 겹치며, 불확실성·상충 근거의 판정 형식을 더 구조화해야 한다.
+- `build`·`plan`: 숨김 override는 v2.0.10에서 의도대로 해석되며 현재 목적에는 적절하다.
+
 ## 기준 문서
 
 | 문서 | 용도 |
