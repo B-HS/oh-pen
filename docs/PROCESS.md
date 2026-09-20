@@ -61,12 +61,20 @@
 | `bun run build:site` | dist/ 9 assets 생성 |
 | `src/cli.ts install --assets-dir ... --dry-run` | 계획 출력, 파일 미변경 |
 | 실제 설치 → `opencode debug agents` | pen primary, build/plan hidden, subagent 6종 model 반영 |
-| `src/cli.ts verify` | 19개 항목 전부 통과 |
+| `src/cli.ts verify` | 25개 항목 전부 통과 |
 | 재설치 멱등성 | 통과 |
 | 사용자 수정 파일 보존 | 통과 (해시 비교) |
 | 런타임 모델 변경 (subagent `.md` 수정) | `debug agents`에 반영 확인 |
 | 런타임 모델 변경 (primary root model) | 세션 실행 모델 반영 확인 |
 | HTTP 배포본 install.sh → install/verify | 통과 |
+| **GitHub Pages 배포본 (b-hs.github.io/oh-pen)** | install.sh·manifest 200, verify 25개 통과 |
 | end-to-end 위임 | pen → explore-pen / sub-pen 호출·통합·커밋 확인 |
 | `.env` deny 경계 | pen이 거부 확인 |
 | uninstall | 파일·config 키 복원 확인 |
+
+### 저장소
+
+- 로컬: `/Users/hyunseokbyun/development/oh-pencode`
+- 원격: <https://github.com/B-HS/oh-pen>
+- 배포: <https://b-hs.github.io/oh-pen/>
+- 커밋: `729a53b` feat, `fd2f908` fix, `b7dc4c1` ci
