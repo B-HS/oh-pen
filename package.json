@@ -1,0 +1,21 @@
+{
+  "name": "oh-pencode",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "pen agent set installer for OpenCode V2",
+  "scripts": {
+    "install:local": "bun run src/cli.ts install --base-url ./dist",
+    "verify": "bun run src/cli.ts verify",
+    "uninstall:local": "bun run src/cli.ts uninstall --base-url ./dist",
+    "build:site": "bun run scripts/build-site.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.11.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "typescript": "^5.9.3"
+  }
+}
