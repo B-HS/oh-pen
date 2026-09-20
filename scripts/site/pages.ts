@@ -5,265 +5,257 @@ import { layout, type LayoutOptions } from "./shell.ts"
 type DocPager = NonNullable<LayoutOptions["pager"]>
 
 const INSTALL_URL = "https://b-hs.github.io/oh-pen/install.sh"
-const STATE_CARD_ICON_SIZE = 24
+const INSTALL_COMMAND = `curl -fsSL ${INSTALL_URL} | bash`
+const STATE_CARD_ICON_SIZE = 28
 
 const esc = (value: string) =>
-  value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;")
-
-const cmd = (command: string) => `<pre class="cmd"><code>${esc(command)}</code></pre>`
+    value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;")
 
 const sortedDocPages = [...docPages].toSorted((a, b) => a.order - b.order)
 
 const categoryLabel = (category: DocPage["category"]) =>
-  docCategories.find((entry) => entry.id === category)?.label ?? category
+    docCategories.find((entry) => entry.id === category)?.label ?? category
 
-/** 페이지 깊이에 맞는 상위 경로 접두. `docs/pen/x.md`(depth 2)면 `../../`. */
 const upFrom = (href: string) => "../".repeat(href.split("/").length - 1)
 
-const docCard = (page: DocPage, href: string) =>
-  `<a class="doc-card doc-card--link" href="${href}">
-    <h3 class="doc-card-title">${esc(page.title)}</h3>
-    <p class="doc-card-summary">${esc(page.summary)}</p>
-    <p class="doc-card-meta"><span class="mono">${esc(page.source)}</span></p>
-    <span class="badge badge--secondary">${esc(categoryLabel(page.category))}</span>
-  </a>`
+const copyButton = (value: string) =>
+    `<button class="copy-btn" type="button" data-copy="${esc(value)}" aria-label="명령 복사">${icon("copy")}<span>Copy</span></button>`
 
-const homeFeatures: { icon: IconName; title: string; text: string }[] = [
-  {
-    icon: "agent",
-    title: "Agent delegation",
-    text: "pen parses the request, decomposes the work, and delegates each unit to a specialized subagent. Independent units run in parallel.",
-  },
-  {
-    icon: "shield",
-    title: "Autonomous delivery",
-    text: "Change requests continue through proportional verification, selective staging, commit, and normal push without routine prompts.",
-  },
-  {
-    icon: "check",
-    title: "Verified installs",
-    text: "install.sh checks the bundle and every asset against the SHA-256 map in manifest.json and stops before writing on any mismatch.",
-  },
-  {
-    icon: "layers",
-    title: "Global install with backup",
-    text: "Writes only under ~/.config/opencode/, backs up managed files before writing, and preserves files you edited.",
-  },
-  {
-    icon: "list",
-    title: "Per-role model assignment",
-    text: "Use convention defaults, inherit the primary model, or assign any connected OpenCode model without repeating the choice per task.",
-  },
-  {
-    icon: "pen",
-    title: "Extensible",
-    text: "Add your own subagents with custom models and permissions, then allow them from pen's explicit list.",
-  },
+const docCard = (page: DocPage, href: string) => `<a class="doc-card" href="${href}">
+  <div class="doc-card-top"><span class="badge">${esc(categoryLabel(page.category))}</span>${icon("arrow-right")}</div>
+  <h3>${esc(page.title)}</h3>
+  <p>${esc(page.summary)}</p>
+  <small>${esc(page.source)}</small>
+</a>`
+
+const workflowSteps: { title: string; text: string }[] = [
+    {
+        title: "Understand",
+        text: "pen classifies the request, reads the project contract, and resolves what done means.",
+    },
+    {
+        title: "Route",
+        text: "It works directly or delegates bounded units to the specialist best suited to each risk.",
+    },
+    {
+        title: "Integrate",
+        text: "Results are reviewed against the real diff, then combined without crossing ownership boundaries.",
+    },
+    {
+        title: "Deliver",
+        text: "Proportional checks run before selective staging, Conventional Commit, and normal push.",
+    },
 ]
 
-const agentModeBadge = { primary: "badge badge--default", subagent: "badge badge--secondary" } as const
-
-const agentRows: { id: string; mode: keyof typeof agentModeBadge; role: string; permissions: string }[] = [
-  {
-    id: "pen",
-    mode: "primary",
-    role: "Executes or delegates, integrates results, verifies, commits, and pushes",
-    permissions: `Project tools and normal Git push; force push <code class="mono">deny</code>`,
-  },
-  {
-    id: "sub-pen",
-    mode: "subagent",
-    role: "Executes a detailed work contract within an assigned scope",
-    permissions: "Project tools; Git mutation and nested subagents denied",
-  },
-  {
-    id: "research-pen",
-    mode: "subagent",
-    role: "Investigates facts, constraints, and prerequisites before implementation",
-    permissions: "Read, search, web",
-  },
-  {
-    id: "explore-pen",
-    mode: "subagent",
-    role: "Finds patterns, symbols, and structure in a codebase",
-    permissions: "Read, search only, no network",
-  },
-  {
-    id: "doc-pen",
-    mode: "subagent",
-    role: "Extracts official usage and saves reusable project documentation",
-    permissions: `Read, search, web, edit <code class="mono">docs/**</code>`,
-  },
-  {
-    id: "verify-pen",
-    mode: "subagent",
-    role: "Runs the smallest independent verification that covers a change's risk",
-    permissions: "Read, search, shell; no source or Git mutation",
-  },
-  {
-    id: "security-pen",
-    mode: "subagent",
-    role: "Audits secrets, auth, injection, and dependencies",
-    permissions: "Read, search, web, package-manager audit commands",
-  },
+const specialists: { id: string; title: string; text: string }[] = [
+    { id: "sub-pen", title: "Implementation", text: "Executes a precise work contract inside an assigned scope." },
+    { id: "research-pen", title: "Research", text: "Resolves external facts, constraints, and official contracts." },
+    { id: "explore-pen", title: "Codebase", text: "Finds symbols, patterns, and dependency paths without mutation." },
+    { id: "doc-pen", title: "Documentation", text: "Turns reusable official usage into project-owned docs under docs/**." },
+    { id: "verify-pen", title: "Verification", text: "Runs the smallest independent check that covers the actual risk." },
+    { id: "security-pen", title: "Security", text: "Audits secrets, input boundaries, auth, injection, and dependencies." },
 ]
 
-const agentsTable = `<div class="table-scroll">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th scope="col" style="width:112px">Agent</th>
-          <th scope="col" style="width:96px">Mode</th>
-          <th scope="col">Role</th>
-          <th scope="col" style="width:224px">Permissions</th>
-        </tr>
-      </thead>
-      <tbody>
-${agentRows
-  .map(
-    (agent) => `        <tr>
-          <td class="mono">${agent.id}</td>
-          <td><span class="${agentModeBadge[agent.mode]}">${agent.mode}</span></td>
-          <td class="flex-cell">${agent.role}</td>
-          <td>${agent.permissions}</td>
-        </tr>`,
-  )
-  .join("\n")}
-      </tbody>
-    </table>
-  </div>`
+const checkItems = (items: string[]) => `<ul class="bullet-list">${items
+    .map((item) => `<li>${icon("check")}<span>${item}</span></li>`)
+    .join("")}</ul>`
 
-const installCommands = [
-  { label: "Install", command: `curl -fsSL ${INSTALL_URL} | bash` },
-  { label: "Preview", command: `curl -fsSL ${INSTALL_URL} | bash -s -- --dry-run` },
-  { label: "Non-interactive", command: `curl -fsSL ${INSTALL_URL} | bash -s -- --no-interview` },
-  { label: "Verify", command: `curl -fsSL ${INSTALL_URL} | bash -s -- verify` },
-  { label: "Uninstall", command: `curl -fsSL ${INSTALL_URL} | bash -s -- uninstall` },
-]
-
-export const homePage = (): string =>
-  layout({
-    lang: "en",
-    surface: "surface-b",
-    activeHref: "index.html",
-    title: "OpenCode V2 pen agent installer",
-    description:
-      "Install the oh-pen agent set for OpenCode V2: one pen primary agent, six specialized subagents, SHA-256 verified installs.",
-    body: `<section class="hero" aria-labelledby="home-hero-title">
-  <h1 class="hero-title" id="home-hero-title">oh-pencode</h1>
-  <p class="hero-sub">A single autonomous pen primary agent for OpenCode V2 — with six specialized subagents. build and plan are hidden, routine work runs through commit and push, and every role can use a connected model of your choice.</p>
-  ${cmd(`curl -fsSL ${INSTALL_URL} | bash`)}
-  <div class="hero-actions">
-    <a class="btn btn--default" href="https://github.com/B-HS/oh-pen" rel="noreferrer">GitHub</a>
-    <a class="btn btn--outline" href="docs/index.html">Docs</a>
+export const homePage = () =>
+    layout({
+        lang: "en",
+        surface: "surface-b",
+        activeHref: "index.html",
+        title: "Autonomous agent delivery for OpenCode V2",
+        description:
+            "Install one pen primary agent and six specialized OpenCode V2 subagents with verified assets, flexible model assignment, and autonomous delivery.",
+        body: `<section class="hero" aria-labelledby="home-hero-title">
+  <div class="hero-copy">
+    <p class="eyebrow">Built for OpenCode V2</p>
+    <h1 class="hero-title" id="home-hero-title">One pen.<br /><span>A complete <br class="mobile-break" />delivery system.</span></h1>
+    <p class="hero-sub">oh-pen replaces fragmented build and plan modes with one autonomous primary agent that understands, delegates, verifies, commits, and pushes — backed by six focused specialists.</p>
+    <div class="hero-actions">
+      <a class="btn btn--primary" href="docs/index.html">Read the docs${icon("arrow-right")}</a>
+      <a class="btn btn--secondary" href="https://github.com/B-HS/oh-pen" rel="noreferrer">${icon("github")}View on GitHub</a>
+    </div>
+    <p class="hero-note">${icon("shield")}Verified assets · Backups before writes · No force push</p>
+  </div>
+  <div class="terminal-card" aria-label="oh-pen installation and delivery flow">
+    <div class="terminal-top"><span>oh-pen — install</span><span class="terminal-dots"><span></span><span></span><span></span></span></div>
+    <div class="terminal-body">
+      <div class="terminal-command"><span class="terminal-prompt">$</span><code>${esc(INSTALL_COMMAND)}</code>${copyButton(INSTALL_COMMAND)}</div>
+      <div class="terminal-flow">
+        <div class="terminal-step"><span>01</span><strong>Inspect project contract</strong><small>pen</small></div>
+        <div class="terminal-step"><span>02</span><strong>Delegate independent work</strong><small>specialists</small></div>
+        <div class="terminal-step"><span>03</span><strong>Verify against risk</strong><small>verify-pen</small></div>
+        <div class="terminal-step"><span>04</span><strong>Commit and push</strong><small>pen</small></div>
+      </div>
+      <span class="terminal-status">Delivery complete</span>
+    </div>
   </div>
 </section>
-<section class="section" aria-labelledby="home-features-title">
-  <h2 class="section-title" id="home-features-title">Features</h2>
-  <div class="feature-grid">
-${homeFeatures
-  .map(
-    (feature) => `    <article class="feature-card">
-      <div class="feature-icon">${icon(feature.icon)}</div>
-      <h3 class="doc-card-title">${feature.title}</h3>
-      <p class="doc-card-summary">${feature.text}</p>
-    </article>`,
-  )
-  .join("\n")}
+<div class="metric-strip" aria-label="Project overview">
+  <div class="metric"><strong>1</strong><span>primary agent</span></div>
+  <div class="metric"><strong>6</strong><span>specialist agents</span></div>
+  <div class="metric"><strong>Any</strong><span>connected model</span></div>
+  <div class="metric"><strong>SHA-256</strong><span>asset verification</span></div>
+</div>
+<section class="section" aria-labelledby="workflow-title">
+  <div class="section-heading">
+    <div><p class="section-kicker">Workflow</p><h2 class="section-title" id="workflow-title">From request to pushed change.</h2></div>
+    <p class="section-lead">pen owns the full delivery loop. It chooses direct execution or delegation from the shape of the task, then keeps routine integration and Git work moving without repeated approval prompts.</p>
+  </div>
+  <div class="workflow-grid">
+${workflowSteps
+    .map(
+        (step, index) => `    <article class="workflow-card"><span class="workflow-index">0${index + 1}</span><h3>${step.title}</h3><p>${step.text}</p></article>`,
+    )
+    .join("\n")}
   </div>
 </section>
-<section class="section" aria-labelledby="home-agents-title">
-  <h2 class="section-title" id="home-agents-title">Agents</h2>
-  ${agentsTable}
-  <p class="muted">build and plan are installed as hidden stubs so the pen set owns the primary slot.</p>
-</section>
-<section class="section" aria-labelledby="home-usage-title">
-  <h2 class="section-title" id="home-usage-title">Usage</h2>
-${installCommands.map((entry) => `  <p class="muted">${entry.label}</p>\n  ${cmd(entry.command)}`).join("\n")}
-  <p class="muted">Requires OpenCode V2 and Bun.</p>
-</section>
-<section class="section" aria-labelledby="home-safety-title">
-  <h2 class="section-title" id="home-safety-title">Safety</h2>
-  <ul>
-    <li>Writes only under <code class="mono">~/.config/opencode/</code> — global install, no per-project mode.</li>
-    <li>Backs up managed files to <code class="mono">~/.config/opencode/oh-pencode/backup/&lt;timestamp&gt;/</code> before writing.</li>
-    <li>Preserves agent files edited after installation and reports them.</li>
-    <li>Rejects asset paths containing <code class="mono">..</code> or absolute paths.</li>
-    <li>Accepts only <code class="mono">https</code> or local asset sources; plain <code class="mono">http://</code> is refused.</li>
-    <li>Never reads secrets, tokens, or <code class="mono">.env</code> files.</li>
-  </ul>
-</section>
-<section class="section" aria-labelledby="home-docs-title">
-  <h2 class="section-title" id="home-docs-title">Docs</h2>
-  <div class="card-grid">
-${sortedDocPages.map((page) => docCard(page, page.href)).join("\n")}
+<section class="section" aria-labelledby="agents-title">
+  <div class="section-heading">
+    <div><p class="section-kicker">Agent system</p><h2 class="section-title" id="agents-title">Clear ownership at every layer.</h2></div>
+    <p class="section-lead">The primary agent keeps context, decisions, integration, and Git. Specialists receive bounded contracts with permissions aligned to their role.</p>
   </div>
+  <div class="agent-stage">
+    <article class="primary-agent">
+      <div class="agent-icon">${icon("pen")}</div>
+      <p class="agent-label">Primary · pen</p>
+      <h3>Orchestrator and owner</h3>
+      <p>Understands the request, assigns work, reviews evidence, resolves overlap, verifies the integrated result, and delivers it.</p>
+      <div class="agent-tags"><span>integrate</span><span>verify</span><span>commit</span><span>push</span></div>
+    </article>
+    <div class="specialist-grid">
+${specialists
+    .map(
+        (agent) => `      <article class="specialist-card"><p class="agent-label">${agent.id}</p><h3>${agent.title}</h3><p>${agent.text}</p></article>`,
+    )
+    .join("\n")}
+    </div>
+  </div>
+</section>
+<section class="section" aria-labelledby="models-title">
+  <div class="section-heading">
+    <div><p class="section-kicker">Configuration</p><h2 class="section-title" id="models-title">Use the model mix that fits your work.</h2></div>
+    <p class="section-lead">Convention defaults are a starting point, not a lock-in. Every role can inherit the primary model or use any provider, model, and variant already connected to OpenCode.</p>
+  </div>
+  <div class="split-panel">
+    <div>
+      <span class="panel-icon">${icon("list")}</span>
+      <h3>Per-role model assignment</h3>
+      <p>Choose once during installation, then let pen reuse the assignment without interrupting every task.</p>
+      ${checkItems([
+          "Convention defaults for a ready-to-run setup",
+          "Primary-model inheritance for a uniform stack",
+          "Direct provider/model#variant input for each role",
+      ])}
+      <pre class="code-sample"><code>provider/model#variant</code></pre>
+    </div>
+    <div>
+      <span class="panel-icon">${icon("doc")}</span>
+      <h3>Documentation that stays with the project</h3>
+      <p>When official docs contain reusable setup or API usage, doc-pen extracts the contract and saves it under the existing docs taxonomy.</p>
+      ${checkItems([
+          "Official sources and version differences first",
+          "Project-specific cautions recorded beside usage",
+          "One-off facts returned without creating duplicate docs",
+      ])}
+      <pre class="code-sample"><code>docs/references/&lt;topic&gt;.md</code></pre>
+    </div>
+  </div>
+</section>
+<section class="section" aria-labelledby="autonomy-title">
+  <div class="section-heading">
+    <div><p class="section-kicker">Autonomy boundary</p><h2 class="section-title" id="autonomy-title">Fewer prompts. Explicit limits.</h2></div>
+    <p class="section-lead">Routine delivery is intentionally uninterrupted. Actions that introduce new authority, expose sensitive data, or rewrite history remain outside that automatic path.</p>
+  </div>
+  <div class="boundary-grid">
+    <article class="boundary-card boundary-card--go"><h3>Continues automatically</h3><p>Actions already inside the requested change.</p><ul><li>Read, edit, build, and proportionate verification</li><li>Selective staging and Conventional Commit</li><li>Normal push to the configured remote</li><li>Documentation updates required by the change</li></ul></article>
+    <article class="boundary-card boundary-card--stop"><h3>Stops at a real boundary</h3><p>Actions that need a new decision or authority.</p><ul><li>Force push or history rewriting</li><li>Secrets, tokens, and .env access</li><li>Destructive or hard-to-recover operations</li><li>Missing product decisions that change the contract</li></ul></article>
+  </div>
+</section>
+<section class="section" aria-labelledby="docs-title">
+  <div class="section-heading">
+    <div><p class="section-kicker">Documentation</p><h2 class="section-title" id="docs-title">Understand the system before it runs.</h2></div>
+    <p class="section-lead">The published docs are generated from the repository’s source documents, so architecture, installer behavior, measured OpenCode contracts, and project decisions stay aligned.</p>
+  </div>
+  <div class="doc-grid">
+${sortedDocPages
+    .slice(0, 6)
+    .map((page) => docCard(page, page.href))
+    .join("\n")}
+  </div>
+</section>
+<section class="cta-panel" aria-labelledby="cta-title">
+  <div><h2 id="cta-title">Install the pen system.</h2><p>Preview first with --dry-run, or install directly with verified assets and automatic backups.</p></div>
+  <a class="btn btn--primary" href="docs/installer.html">Installation guide${icon("arrow-right")}</a>
 </section>`,
-  })
+    })
 
-export const docsIndexPage = (): string =>
-  layout({
-    lang: "ko",
-    surface: "surface-a",
-    activeHref: "docs/index.html",
-    title: "문서",
-    description: "oh-pen 문서 목록 — 에이전트 세트 설계, OpenCode V2 계약, 프로젝트 기록과 이력.",
-    body: `<section class="panel" aria-labelledby="docs-index-title">
-  <header class="panel-header"><h2 class="panel-title" id="docs-index-title">문서</h2></header>
-  <div class="panel-content">
-    <p class="muted">저장소 문서를 HTML로 렌더한 것이다. 설계·OpenCode 계약·프로젝트·이력 4개 카테고리로 묶여 있다.</p>
+export const docsIndexPage = () =>
+    layout({
+        lang: "ko",
+        surface: "surface-a",
+        activeHref: "docs/index.html",
+        title: "문서",
+        description: "oh-pen 문서 — 에이전트 아키텍처, 설치, OpenCode V2 계약, 결정과 검증 이력.",
+        body: `<section class="docs-index" aria-labelledby="docs-index-title">
+  <header class="docs-intro">
+    <p class="section-kicker">oh-pen documentation</p>
+    <h1 id="docs-index-title">필요한 근거까지<br />확인할 수 있는 문서.</h1>
+    <p>빠른 설치부터 에이전트 권한, 모델 배정, OpenCode V2 실측 계약, 프로젝트 결정과 검증 이력까지 저장소 문서를 그대로 연결합니다.</p>
+    <div class="quickstart"><pre><code>${esc(INSTALL_COMMAND)}</code></pre>${copyButton(INSTALL_COMMAND)}</div>
+  </header>
+  <div class="docs-categories">
 ${docCategories
-  .map((category) => {
-    const pages = sortedDocPages.filter((page) => page.category === category.id)
-    return `    <h3 class="muted">${esc(category.label)}</h3>
-    <div class="card-grid">
-${pages.map((page) => docCard(page, `../${page.href}`)).join("\n")}
-    </div>`
-  })
-  .join("\n")}
+    .map((category) => {
+        const pages = sortedDocPages.filter((page) => page.category === category.id)
+        return `    <section class="docs-category" aria-labelledby="category-${category.id}">
+      <header><h2 id="category-${category.id}">${esc(category.label)}</h2><p>${pages.length}개 문서</p></header>
+      <div class="docs-category-grid">${pages.map((page) => docCard(page, `../${page.href}`)).join("")}</div>
+    </section>`
+    })
+    .join("\n")}
   </div>
 </section>`,
-  })
+    })
 
-export const docPage = (doc: DocPage, rendered: RenderedDoc, pager: DocPager): string =>
-  layout({
-    lang: "ko",
-    surface: "surface-a",
-    activeHref: doc.href,
-    title: doc.title,
-    description: doc.summary,
-    toc: rendered.sections,
-    meta: [
-      { label: "출처", value: doc.source },
-      { label: "줄 수", value: String(rendered.lineCount) },
-      { label: "분류", value: categoryLabel(doc.category) },
-    ],
-    breadcrumb: [
-      { label: "oh-pen", href: `${upFrom(doc.href)}index.html` },
-      { label: "문서", href: `${upFrom(doc.href)}docs/index.html` },
-      { label: doc.title, href: doc.href },
-    ],
-    pager,
-    body: `<section class="panel" aria-labelledby="doc-page-title">
-  <header class="panel-header"><h2 class="panel-title" id="doc-page-title">${esc(doc.title)}</h2></header>
-  <div class="panel-content"><article class="prose">${rendered.html}</article></div>
-</section>`,
-  })
+export const docPage = (doc: DocPage, rendered: RenderedDoc, pager: DocPager) =>
+    layout({
+        lang: "ko",
+        surface: "surface-a",
+        activeHref: doc.href,
+        title: doc.title,
+        description: doc.summary,
+        toc: rendered.sections,
+        meta: [
+            { label: "출처", value: doc.source },
+            { label: "줄 수", value: String(rendered.lineCount) },
+            { label: "분류", value: categoryLabel(doc.category) },
+        ],
+        breadcrumb: [
+            { label: "oh-pen", href: `${upFrom(doc.href)}index.html` },
+            { label: "문서", href: `${upFrom(doc.href)}docs/index.html` },
+            { label: doc.title, href: doc.href },
+        ],
+        pager,
+        body: `<article class="docs-article">
+  <header class="doc-header"><p class="section-kicker">${esc(categoryLabel(doc.category))}</p><h1>${esc(doc.title)}</h1><p>${esc(doc.summary)}</p></header>
+  <div class="prose">${rendered.html}</div>
+</article>`,
+    })
 
-export const notFoundPage = (): string =>
-  layout({
-    lang: "en",
-    surface: "surface-b",
-    activeHref: "404.html",
-    title: "Page not found",
-    description: "The requested oh-pen page does not exist.",
-    body: `<section class="state-card" aria-labelledby="notfound-title">
+export const notFoundPage = () =>
+    layout({
+        lang: "en",
+        surface: "surface-b",
+        activeHref: "404.html",
+        title: "Page not found",
+        description: "The requested oh-pen page does not exist.",
+        body: `<section class="state-card" aria-labelledby="notfound-title"><div>
   ${icon("search", STATE_CARD_ICON_SIZE)}
-  <h1 class="section-title" id="notfound-title">Page not found</h1>
-  <p class="muted">The page you requested does not exist on this site. Continue from the home page or the docs index.</p>
-  <div class="hero-actions">
-    <a class="btn btn--default" href="index.html">Home</a>
-    <a class="btn btn--outline" href="docs/index.html">Docs</a>
-  </div>
-</section>`,
-  })
+  <h1 id="notfound-title">Page not found</h1>
+  <p class="muted">The page you requested does not exist. Continue from the home page or browse the documentation.</p>
+  <div class="hero-actions"><a class="btn btn--primary" href="index.html">Home</a><a class="btn btn--secondary" href="docs/index.html">Docs</a></div>
+</div></section>`,
+    })

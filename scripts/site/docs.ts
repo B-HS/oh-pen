@@ -62,7 +62,7 @@ export const docPages: DocPage[] = [
     source: "docs/acknowledge/decisions.md",
     title: "결정과 합의",
     category: "project",
-    summary: "사용자 결정 D1~D11, 해소된 미해결 항목, 실측 전제 기록.",
+    summary: "사용자 결정 D1~D16, 해소된 미해결 항목, 실측 전제 기록.",
     order: 5,
   },
   {
