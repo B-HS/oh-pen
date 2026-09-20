@@ -1,117 +1,111 @@
+<div align="center">
+
+<img src="docs/assets/app-icon.svg" alt="oh-pencode icon" width="112" />
+
 # oh-pencode
 
-OpenCode V2용 **pen** 에이전트 세트 installer.
+**A single `pen` primary agent for OpenCode V2 — with six specialized subagents.**
 
-`build`/`plan`을 숨기고 `pen` 단독 primary agent로 동작하며, 작업 성격별 서브에이전트(`sub-pen`, `research-pen`, `explore-pen`, `doc-pen`, `verify-pen`, `security-pen`)에 위임한다.
+`build` and `plan` hidden. Auto-mode. Per-role model assignment. Verified installs.
 
-## 설치
+[Install](#install) · [Agents](#agents) · [Usage](#usage) · [Development](#development) · [Docs](#docs)
+
+</div>
+
+oh-pencode installs a single primary agent, `pen`, into the global OpenCode V2 config directory. `pen` replaces the built-in `build` and `plan` agents, runs in auto-mode by asking for no permission approvals, and delegates work to six specialized subagents: `sub-pen` for execution, `research-pen` for planning, `explore-pen` for codebase search, `doc-pen` for external documentation, `verify-pen` for independent verification, and `security-pen` for security audits. Each subagent carries its own model assignment, so the same delegation can run different models per role.
+
+## Install
 
 ```bash
 curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash
 ```
 
-미리보기(파일을 쓰지 않음):
+Preview without writing any file:
 
 ```bash
 curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- --dry-run
 ```
 
-비대화형(컨벤션 배정 기본값):
+Non-interactive install with convention model defaults:
 
 ```bash
 curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- --no-interview
 ```
 
-검증 / 제거:
+Verify or remove:
 
 ```bash
 curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- verify
 curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- uninstall
 ```
 
-## 요구 사항
+Requirements
 
 - OpenCode V2 (`opencode --version`)
 - Bun (`bun --version`)
 
-## 설치되는 것
+The installer downloads `install.sh`, `manifest.json`, and every asset listed in the manifest, verifies each SHA-256 hash recorded in the manifest, and only then runs the bundled installer. A hash mismatch stops the install before any file is written.
 
-`~/.config/opencode/` 아래에만 쓴다.
+## Agents
 
-| 파일 | 내용 |
-| --- | --- |
-| `agents/pen.md` | 메인 오케스트레이터 (primary) |
-| `agents/sub-pen.md` | 상세 계약 실행자 |
-| `agents/research-pen.md` | 기획·조사 |
-| `agents/explore-pen.md` | 코드베이스 탐색 |
-| `agents/doc-pen.md` | 외부 문서 심층 분석 |
-| `agents/verify-pen.md` | 독립 검증 |
-| `agents/security-pen.md` | 보안 감사 |
-| `agents/build.md`, `agents/plan.md` | built-in 숨김 (설치 시 선택) |
-| `opencode.jsonc` | `default_agent`, root `model` (기존 키는 보존) |
-| `oh-pencode/manifest.json` | 설치 기록 (해시·모델·설정값) |
-| `oh-pencode/backup/<timestamp>/` | 설치 전 백업 |
-
-## 에이전트 구성
-
-| Agent | Mode | 역할 | 권한 |
+| Agent | Mode | Role | Permissions |
 | --- | --- | --- | --- |
-| `pen` | primary | 요구 해석·분해·통합·검증·Git | 전체 (auto-mode) |
-| `sub-pen` | subagent | 구현·수정·검증 | pen과 동일, subagent 호출 불가 |
-| `research-pen` | subagent | 조사 | 읽기·검색만 |
-| `explore-pen` | subagent | 탐색 | 읽기·검색만, 네트워크 불가 |
-| `doc-pen` | subagent | 문서 분석 | 읽기·검색·web |
-| `verify-pen` | subagent | 검증 | 읽기·검색·shell |
-| `security-pen` | subagent | 보안 감사 | 읽기·검색·web, shell 불가 |
+| `pen` | primary | Orchestrates: parses requirements, decomposes work, integrates results, owns Git | Full auto-mode, `deny` rules for `.env` kept |
+| `sub-pen` | subagent | Executes a detailed work contract within an assigned scope | Same as `pen`, cannot spawn subagents |
+| `research-pen` | subagent | Investigates facts, constraints, and prerequisites before implementation | Read, search, web |
+| `explore-pen` | subagent | Finds patterns, symbols, and structure in a codebase | Read, search only, no network |
+| `doc-pen` | subagent | Reads official documentation and API contracts in depth | Read, search, web |
+| `verify-pen` | subagent | Runs the smallest independent verification that covers a change's risk | Read, search, shell |
+| `security-pen` | subagent | Audits secrets, auth, injection, and dependencies | Read, search, web, no shell |
 
-## 동작
+`build` and `plan` are installed as hidden stubs so the pen set owns the primary slot. The installer writes only under `~/.config/opencode/`.
 
-### auto-mode
+## Usage
 
-권한 승인을 묻지 않고 진행한다. `deny` 규칙(시크릿·외부 경계)은 그대로 차단된다.
+1. Start a new OpenCode session. `pen` is the default agent.
+2. Before starting work, `pen` asks two questions in one message: whether to use the multi-agent workflow, and which models to assign.
+3. If the workflow is on, `pen` decomposes the task, injects a nine-item delegation contract into each subagent prompt, runs independent work in parallel with `background: true`, integrates the results, and owns commits and pushes.
 
-### workflow
+Model assignment
 
-`pen`이 작업을 분해해 `subagent` tool로 위임한다. 위임 시 `ai-process.md`의 9개 계약 항목(목표·근거·소유 범위·규칙·순서·엣지 케이스·검증·보고 형식·통합)을 생략 없이 prompt에 넣는다.
+- Subagent models are set in `~/.config/opencode/agents/<id>.md` on the `model:` line. Changes take effect on the next model request without a restart.
+- The primary session model is fixed by the root `model` key in `~/.config/opencode/opencode.jsonc`. A `model:` field in `agents/pen.md` has no effect on the primary session.
+- `pen` asks for the assignment at the start of each task and does not persist the choice as a long-term default.
 
-### 모델 선택
-
-새 작업을 시작할 때 pen이 workflow 사용 여부와 모델 배정을 묻는다. 선택은 그 작업에만 유효하다.
-
-- subagent 모델: `agents/<id>.md`의 `model:` 수정으로 런타임 반영됨 (실측)
-- pen 자신의 모델: `opencode.jsonc`의 root `model`이 결정함 (실측)
-
-## 개발
+## Development
 
 ```bash
 bun install
 bun run typecheck
-bun run build:site                    # dist/ 생성
-bun run src/cli.ts install --assets-dir ./dist/assets --dry-run
+bun run build:site                              # generates dist/
+bun run src/cli.ts install --assets-dir ./dist/assets --dry-run --no-interview
 bun run src/cli.ts verify
+bun run install:local -- --dry-run --no-interview   # exercises the built dist/ through the --base-url path
 ```
 
-`--assets-dir`는 로컬 `assets/`를 직접 쓰는 개발용 플래그다. 배포 시에는 GitHub Pages의 `manifest.json`과 `assets/`를 사용한다.
+`--assets-dir` points directly at a local asset directory, while `--base-url ./dist` reads the built `dist/manifest.json` and its `assets/` tree. Both are development-only flags. Release installs fetch the published site instead.
 
-### GitHub Pages 배포
+### Deployment
 
-`main` 브랜치에 push하면 GitHub Actions가 `dist/`를 Pages에 배포한다.
+Pushing to `main` runs `typecheck` and `build:site` in GitHub Actions and publishes `dist/` to GitHub Pages. `bun run build:site` regenerates `dist/` from scratch, records SHA-256 hashes for the bundle and every asset in `dist/manifest.json`, and emits the bootstrap `install.sh` that verifies those hashes at install time.
 
-## 문서
+## Docs
 
-| 문서 | 내용 |
+| Document | Purpose |
 | --- | --- |
-| `docs/opencode/v2-agents.md` | OpenCode V2 agent 계약 (실측 포함) |
-| `docs/opencode/v2-install-surface.md` | 설치 지점·우선순위·멱등성 |
-| `docs/pen/architecture.md` | 에이전트 세트 설계 |
-| `docs/pen/installer.md` | installer 설계 |
-| `docs/acknowledge/decisions.md` | 결정·합의 기록 |
-| `docs/PROCESS.md` | 작업 상태 |
+| `docs/opencode/v2-agents.md` | OpenCode V2 agent contract (measured behavior included) |
+| `docs/opencode/v2-install-surface.md` | Install points, precedence, and idempotency |
+| `docs/pen/architecture.md` | Agent set design |
+| `docs/pen/installer.md` | Installer design |
+| `docs/acknowledge/decisions.md` | Decisions and agreements |
+| `docs/PROCESS.md` | Work state |
 
-## 안전
+## Safety
 
-- `~/.config/opencode/` 밖을 건드리지 않는다.
-- 기존 `opencode.jsonc`의 사용자 키를 보존하고, 변경 전 백업한다.
-- 설치 후 사용자가 수정한 파일은 재설치 시 보존한다.
-- 시크릿·토큰·`.env`를 읽지 않는다.
-- `sudo`를 쓰지 않는다.
+- Writes only under `~/.config/opencode/`.
+- Backs up `opencode.jsonc` and every managed agent file before writing.
+- Preserves agent files that the user edited after installation, and reports them.
+- Rejects asset paths containing `..` or absolute paths, so a tampered manifest cannot escape the config directory.
+- Accepts only `https` or local paths as an asset source.
+- Does not read secrets, tokens, or `.env` files.
+- Does not use `sudo`.
