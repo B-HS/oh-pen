@@ -13,20 +13,3 @@ export const managedDir = () => join(configRoot(), "oh-pencode")
 export const manifestFile = () => join(managedDir(), "manifest.json")
 
 export const backupDir = () => join(managedDir(), "backup")
-
-export const managedAgentIds = [
-  "pen",
-  "sub-pen",
-  "research-pen",
-  "explore-pen",
-  "doc-pen",
-  "verify-pen",
-  "security-pen",
-  "build",
-  "plan",
-] as const
-
-export type ManagedAgentId = (typeof managedAgentIds)[number]
-
-/** 사용자가 임의로 추가할 수 있는 서브에이전트 접미사. */
-export const userAgentSuffix = "-pen"

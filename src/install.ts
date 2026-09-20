@@ -1,5 +1,5 @@
 import { cp, mkdir, rm } from "node:fs/promises"
-import { dirname, join } from "node:path"
+import { dirname, isAbsolute, join, relative } from "node:path"
 import type { AssetSource } from "./assets.ts"
 import { applyManagedKeys, readConfig, readRootModel, writeConfig, type ConfigChange } from "./config.ts"
 import { exists, listFiles, readManifest, sha256, timestamp, writeManifest, type Manifest } from "./fs.ts"
@@ -25,12 +25,28 @@ export type InstallResult = {
   configChanges: ConfigChange[]
 }
 
+/** asset 상대 경로를 검증한다. 절대 경로·`..` 등으로 root 밖을 가리킬 수 있는 경로는 거부한다. */
+const assertSafeAssetPath = (assetPath: string) => {
+  if (assetPath.length === 0 || isAbsolute(assetPath)) {
+    throw new Error(`asset 경로가 안전하지 않습니다: ${assetPath}`)
+  }
+  const invalid = assetPath.split("/").filter((segment) => segment.length === 0 || segment === "." || segment === "..")
+  if (invalid.length > 0) {
+    throw new Error(`asset 경로가 안전하지 않습니다: ${assetPath}`)
+  }
+}
+
 /** asset 경로 → 설치 대상 경로. `agents/builtin/build.md`는 `agents/build.md`로 평탄화한다. */
 const targetPathFor = (root: string, assetPath: string) => {
+  assertSafeAssetPath(assetPath)
   const segments = assetPath.split("/")
   const fileName = segments.at(-1) ?? ""
   const isBuiltin = segments.includes("builtin")
-  return isBuiltin ? join(root, "agents", fileName) : join(root, assetPath)
+  const target = isBuiltin ? join(root, "agents", fileName) : join(root, assetPath)
+  if (relative(root, target).startsWith("..") || isAbsolute(relative(root, target))) {
+    throw new Error(`asset 경로가 설치 대상 밖으로 벗어납니다: ${assetPath}`)
+  }
+  return target
 }
 
 const agentIdFor = (assetPath: string) => (assetPath.split("/").at(-1) ?? "").replace(/\.md$/, "")
@@ -45,6 +61,9 @@ const backupFile = async (source: string, backupRoot: string, root: string) => {
   await cp(source, destination)
   return true
 }
+
+const configRewriteWarning = (backupRoot: string) =>
+  `opencode.jsonc의 주석과 trailing comma가 재작성 과정에서 사라질 수 있습니다 (백업: ${backupRoot})`
 
 export const install = async (options: InstallOptions): Promise<InstallResult> => {
   const root = configRoot()
@@ -124,6 +143,7 @@ export const install = async (options: InstallOptions): Promise<InstallResult> =
     await writeConfig(configFile(), nextConfig)
     result.wrote.push(configFile())
     result.configChanges.push(...changes)
+    result.warnings.push(configRewriteWarning(backupRoot))
   }
 
   const manifest: Manifest = {

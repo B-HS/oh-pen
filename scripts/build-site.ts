@@ -67,6 +67,20 @@ done <<EOF
 $MANIFEST_ASSETS
 EOF
 
+bun -e '
+const manifest = await Bun.file(process.argv[1]).json();
+const hashes = manifest.sha256;
+if (!hashes) { console.error("manifest에 sha256 검증 정보가 없습니다."); process.exit(1); }
+const entries = Object.entries(hashes);
+for (const [path, expected] of entries) {
+  const file = path === "oh-pencode.ts" ? process.argv[2] + "/oh-pencode.ts" : process.argv[2] + "/assets/" + path;
+  if (!(await Bun.file(file).exists())) { console.error("파일이 없습니다: " + path); process.exit(1); }
+  const actual = new Bun.CryptoHasher("sha256").update(await Bun.file(file).text()).digest("hex");
+  if (actual !== expected) { console.error("sha256이 일치하지 않습니다: " + path); process.exit(1); }
+}
+console.log("sha256 검증 통과: " + entries.length + "개 파일");
+' "$TMP_DIR/manifest.json" "$TMP_DIR"
+
 COMMAND="\${1:-install}"
 case "$COMMAND" in
   install|verify|uninstall|upgrade) shift || true ;;
@@ -141,19 +155,31 @@ curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- uninstall</code
 const buildManifest = async (version: string) => {
   const assetFiles = await listFiles(distAssets)
   const assets = assetFiles.filter((path) => !path.startsWith(".")).sort()
+  const sha256Map: Record<string, string> = { "oh-pencode.ts": sha256(await Bun.file(join(dist, "oh-pencode.ts")).text()) }
+  for (const asset of assets) {
+    sha256Map[asset] = sha256(await Bun.file(join(distAssets, asset)).text())
+  }
   await Bun.write(
     join(dist, "manifest.json"),
-    `${JSON.stringify({ version, releasedAt: new Date().toISOString(), assets }, null, 2)}\n`,
+    `${JSON.stringify({ version, releasedAt: new Date().toISOString(), assets, sha256: sha256Map }, null, 2)}\n`,
   )
   return assets
 }
 
 const verifyIntegrity = async (assets: string[]) => {
   if (assets.length === 0) throw new Error("에셋이 비어 있습니다.")
-  for (const asset of assets) {
-    const file = join(distAssets, asset)
-    if (!(await exists(file))) throw new Error(`에셋이 없습니다: ${asset}`)
+  const manifest = (await Bun.file(join(dist, "manifest.json")).json()) as { sha256?: Record<string, string> }
+  const hashes = manifest.sha256
+  if (!hashes) throw new Error("manifest에 sha256 맵이 없습니다.")
+  const targets = ["oh-pencode.ts", ...assets]
+  for (const asset of targets) {
+    const expected = hashes[asset]
+    if (expected === undefined) throw new Error(`sha256 맵에 항목이 없습니다: ${asset}`)
+    const file = asset === "oh-pencode.ts" ? join(dist, asset) : join(distAssets, asset)
+    if (!(await exists(file))) throw new Error(`파일이 없습니다: ${asset}`)
     const content = await Bun.file(file).text()
+    if (sha256(content) !== expected) throw new Error(`sha256이 일치하지 않습니다: ${asset}`)
+    if (asset === "oh-pencode.ts") continue
     if (content.trim().length === 0) throw new Error(`에셋이 비어 있습니다: ${asset}`)
     if (asset.startsWith("agents/") && asset.endsWith(".md")) {
       if (!content.startsWith("---")) throw new Error(`frontmatter가 없습니다: ${asset}`)
@@ -162,7 +188,6 @@ const verifyIntegrity = async (assets: string[]) => {
       if (!content.includes("description:")) throw new Error(`description이 없습니다: ${asset}`)
       if (isBuiltin && !content.includes("hidden: true")) throw new Error(`hidden이 없습니다: ${asset}`)
     }
-    void sha256(content)
   }
 }
 

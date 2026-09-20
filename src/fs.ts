@@ -75,6 +75,3 @@ export const removeIfEmpty = async (dir: string) => {
     // 디렉터리가 없거나 비어 있지 않다. 무시한다.
   }
 }
-
-/** `<home>/.config/opencode/agents/pen.md` → `agents/pen.md` */
-export const toRelative = (root: string, path: string) => relative(root, path)

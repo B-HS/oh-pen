@@ -1,6 +1,6 @@
 import { readConfig, readDefaultAgent, readRootModel } from "./config.ts"
 import { exists, readManifest } from "./fs.ts"
-import { agentsDir, configFile, configRoot, manifestFile } from "./paths.ts"
+import { agentsDir, configFile, manifestFile } from "./paths.ts"
 import { readdir } from "node:fs/promises"
 import { join } from "node:path"
 
@@ -154,9 +154,3 @@ export const runVerify = async (options: { directory: string }): Promise<VerifyR
 
   return { checks, ok: checks.every((check) => check.ok) }
 }
-
-/** 설치 전 상태(에이전트 파일 없음)를 확인한다. */
-export const verifyInstallTarget = async (): Promise<VerifyCheck[]> => [
-  { name: "config root", ok: true, detail: configRoot() },
-  { name: "agents dir", ok: true, detail: agentsDir() },
-]

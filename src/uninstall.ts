@@ -1,13 +1,24 @@
 import { rm } from "node:fs/promises"
-import { join } from "node:path"
+import { isAbsolute, join, relative } from "node:path"
 import { readConfig, revertManagedKeys, writeConfig } from "./config.ts"
 import { exists, readManifest, removeIfEmpty } from "./fs.ts"
-import { agentsDir, configFile, configRoot, managedDir } from "./paths.ts"
+import { agentsDir, backupDir, configFile, configRoot, managedDir } from "./paths.ts"
 
 export type UninstallResult = {
   removed: string[]
   preserved: string[]
   warnings: string[]
+}
+
+/** manifest 기록 경로가 configRoot 안에 머무는지 검사한다. 위반이면 undefined. */
+const containedTarget = (root: string, path: string) => {
+  if (path.length === 0 || isAbsolute(path)) return undefined
+  const invalid = path.split("/").filter((segment) => segment.length === 0 || segment === "." || segment === "..")
+  if (invalid.length > 0) return undefined
+  const target = join(root, path)
+  const relativePath = relative(root, target)
+  if (relativePath.startsWith("..") || isAbsolute(relativePath) || relativePath.length === 0) return undefined
+  return target
 }
 
 /** manifest에 기록된 파일만 제거한다. 사용자가 수정한 파일은 보존한다. */
@@ -22,7 +33,11 @@ export const uninstall = async (options: { dryRun: boolean; force: boolean }): P
   }
 
   for (const file of manifest.files) {
-    const target = join(root, file.path)
+    const target = containedTarget(root, file.path)
+    if (target === undefined) {
+      result.warnings.push(`manifest의 경로가 설치 대상 밖이라 건너뜁니다: ${file.path}`)
+      continue
+    }
     if (!(await exists(target))) continue
     const onDisk = await Bun.file(target).text()
     const { sha256 } = await import("./fs.ts")
@@ -52,6 +67,9 @@ export const uninstall = async (options: { dryRun: boolean; force: boolean }): P
         }
       } else {
         await writeConfig(configFile(), reverted.next)
+        result.warnings.push(
+          `opencode.jsonc의 주석과 trailing comma가 재작성 과정에서 사라질 수 있습니다 (백업: ${backupDir()})`,
+        )
         for (const change of reverted.changes) {
           result.removed.push(`${configFile()} ${change.key}`)
         }

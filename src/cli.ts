@@ -1,6 +1,6 @@
 import { log, note, outro, spinner } from "@clack/prompts"
 import { join } from "node:path"
-import { httpAssets, localAssets, type AssetSource } from "./assets.ts"
+import { httpAssets, localAssets, verificationWarning, type AssetSource } from "./assets.ts"
 import { readConfig, readDefaultAgent, readRootModel } from "./config.ts"
 import { exists } from "./fs.ts"
 import { install } from "./install.ts"
@@ -25,6 +25,12 @@ type Flags = {
 }
 
 const defaultBaseUrl = "https://b-hs.github.io/oh-pen"
+
+type RemoteManifest = {
+  version?: string
+  assets?: string[]
+  sha256?: Record<string, string>
+}
 
 const parseFlags = (argv: string[]): Flags => {
   const commands: Command[] = ["install", "verify", "uninstall", "upgrade"]
@@ -68,17 +74,31 @@ const printHelp = () => {
   )
 }
 
-const resolveAssets = async (flags: Flags): Promise<{ assets: AssetSource; version: string }> => {
+const resolveAssets = async (flags: Flags): Promise<{ assets: AssetSource; version: string; warnings: string[] }> => {
   if (flags.assetsDir) {
-    return { assets: localAssets(flags.assetsDir), version: "local" }
+    return { assets: localAssets(flags.assetsDir), version: "local", warnings: [] }
   }
   const baseUrl = (flags.baseUrl ?? defaultBaseUrl).replace(/\/$/, "")
+  if (baseUrl.startsWith("http://")) {
+    throw new Error("http는 허용되지 않습니다. https 또는 로컬 경로만 허용합니다.")
+  }
   if (baseUrl.startsWith(".") || baseUrl.startsWith("/") || baseUrl.startsWith("file:")) {
     const root = baseUrl.startsWith("file:") ? baseUrl.replace("file://", "") : baseUrl
     if (!(await exists(root))) {
       throw new Error(`로컬 에셋 경로가 없습니다: ${root}`)
     }
-    return { assets: localAssets(root), version: "local" }
+    const manifestPath = `${root}/manifest.json`
+    if (await exists(manifestPath)) {
+      const manifest = (await Bun.file(manifestPath).json()) as RemoteManifest
+      const assetPaths = manifest.assets ?? []
+      if (assetPaths.length === 0) {
+        throw new Error("manifest에 에셋 목록이 없습니다.")
+      }
+      const source = localAssets(root, { assetPrefix: "assets", assets: assetPaths, sha256: manifest.sha256 })
+      return { assets: source, version: manifest.version ?? "local", warnings: [verificationWarning(source.verification)].filter((line) => line !== undefined) }
+    }
+    const source = localAssets(root)
+    return { assets: source, version: "local", warnings: [verificationWarning(source.verification)].filter((line) => line !== undefined) }
   }
   const manifestResponse = await fetch(`${baseUrl}/manifest.json`)
   if (!manifestResponse.ok) {
@@ -86,12 +106,17 @@ const resolveAssets = async (flags: Flags): Promise<{ assets: AssetSource; versi
       `manifest를 받지 못했습니다 (HTTP ${manifestResponse.status}). --assets-dir 또는 --base-url 을 확인하세요.`,
     )
   }
-  const manifest = (await manifestResponse.json()) as { version?: string; assets?: string[] }
+  const manifest = (await manifestResponse.json()) as RemoteManifest
   const assetPaths = manifest.assets ?? []
   if (assetPaths.length === 0) {
     throw new Error("manifest에 에셋 목록이 없습니다.")
   }
-  return { assets: httpAssets(baseUrl, assetPaths), version: manifest.version ?? "unknown" }
+  const source = httpAssets(baseUrl, assetPaths, manifest.sha256)
+  return {
+    assets: source,
+    version: manifest.version ?? "unknown",
+    warnings: [verificationWarning(source.verification)].filter((line) => line !== undefined),
+  }
 }
 
 const printResult = (label: string, lines: string[], warnings: string[] = []) => {
@@ -144,7 +169,7 @@ const main = async () => {
     return
   }
 
-  const { assets, version } = await resolveAssets(flags)
+  const { assets, version, warnings } = await resolveAssets(flags)
   const { value: currentConfig } = await readConfig(configFile())
   const currentDefaultAgent = readDefaultAgent(currentConfig)
   const currentRootModel = readRootModel(currentConfig)
@@ -166,6 +191,7 @@ const main = async () => {
   printResult(
     flags.dryRun ? "설치 계획 (dry-run)" : "설치 완료",
     [
+      ...warnings,
       ...result.wrote.map((path) => `쓰기: ${path}`),
       ...result.skipped.map((path) => `건너뜀: ${path}`),
       ...result.preserved.map((path) => `보존: ${path}`),
