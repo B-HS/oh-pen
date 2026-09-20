@@ -6,7 +6,7 @@
 - [x] b. 실패 재현 — 파이프 stdin을 상속한 PTY에서 `↓`·Enter가 `^[[B`로 출력되고 선택이 진행되지 않는 현상 재현
 - [x] c. TTY 전달·반응형 프롬프트 수정 — 대화형 설치만 읽기·쓰기가 가능한 터미널 fd를 입력으로 사용하고 박스형 장문 안내를 짧은 흐름형 UI로 교체
 - [x] d. 위험 비례 검증 — 테스트 7건·타입검사·사이트 빌드·45열 PTY 방향키/Enter·비대화형 dry-run 통과
-- [ ] e. 선별 staging·Conventional Commit·일반 push 및 Pages 배포 확인
+- [x] e. 선별 staging·Conventional Commit·일반 push 및 Pages 배포 확인 — `fbc646a`, Actions `35544944702`, 공개 PTY 입력 통과
 
 ### 완료 기준
 
@@ -24,6 +24,7 @@
 | `bun run build:site` | 9 assets, 11 pages 생성 |
 | 대화형 스트림 설치 | 45열 PTY에서 `↓`로 선택 이동 후 Enter로 다음 질문 진입 |
 | 비대화형 설치 | 터미널 없는 `--no-interview --dry-run` 통과 |
+| GitHub Pages | Actions `35544944702` 성공, 공개 `curl | bash` 설치에서 `↓`·Enter 동작 확인 |
 
 ## 작업: README·GitHub Pages 문서 경험 고도화
 
