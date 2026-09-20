@@ -1,4 +1,4 @@
-import { cancel, confirm, group, isCancel, log, note, select, text } from "@clack/prompts"
+import { cancel, confirm, group, intro, isCancel, log, select, text } from "@clack/prompts"
 import { conventionModels, isValidModelRef, type AgentModels, type ModelMode } from "./models.ts"
 
 export type InstallAnswers = {
@@ -41,27 +41,27 @@ export const runInterview = async (context: {
   currentDefaultAgent: string | undefined
   currentRootModel: string | undefined
 }): Promise<InstallAnswers> => {
-  note(
+  intro("oh-pencode installer")
+  log.info(
     [
-      "pen 에이전트 세트를 전역 OpenCode 설정에 설치합니다.",
-      "설치 위치: ~/.config/opencode/",
-      "설치 전에 기존 설정을 백업합니다.",
+      "pen 에이전트 세트를 설치합니다.",
+      "위치: ~/.config/opencode/",
+      "기존 설정은 먼저 백업합니다.",
     ].join("\n"),
-    "oh-pencode installer",
   )
 
   const base = await group(
     {
       modelMode: () =>
         select({
-          message: "에이전트 모델을 어떻게 할까요?",
+          message: "모델 배정 방식을 선택하세요.",
           options: [
             {
               value: "convention" as const,
-              label: "컨벤션 배정 (Sol/Terra/Luna)",
-              hint: "ai-process.md §1.2 기본안",
+              label: "컨벤션 기본값",
+              hint: "Sol/Terra/Luna",
             },
-            { value: "inherit" as const, label: "부모 모델 상속", hint: "subagent model 미지정" },
+            { value: "inherit" as const, label: "부모 모델 상속" },
             { value: "custom" as const, label: "직접 지정" },
           ],
           initialValue: "convention" as const,
@@ -113,15 +113,15 @@ export const runInterview = async (context: {
 
   const summary = modelEntries.map(([agent]) => `  ${agent.padEnd(14)} ${models[agent] ?? "(상속)"}`).join("\n")
 
-  note(
+  log.info(
     [
+      "설치 요약",
       `모델: ${modelMode === "convention" ? "컨벤션 배정" : modelMode === "inherit" ? "부모 상속" : "직접 지정"}`,
       summary,
       `pen 세션 모델 (root): ${rootModel}`,
       `build/plan 숨김: ${base.hideBuiltins ? "예" : "아니오"}`,
       `default_agent: ${base.adoptDefaultAgent ? "pen" : "유지"}`,
     ].join("\n"),
-    "설치 요약",
   )
 
   const ok = requireValue(await confirm({ message: "이대로 설치할까요?", initialValue: true }))

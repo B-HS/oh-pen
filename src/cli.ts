@@ -1,4 +1,4 @@
-import { log, note, outro, spinner } from "@clack/prompts"
+import { intro, log, outro, spinner } from "@clack/prompts"
 import { join } from "node:path"
 import { httpAssets, localAssets, verificationWarning, type AssetSource } from "./assets.ts"
 import { readConfig, readDefaultAgent, readRootModel } from "./config.ts"
@@ -53,7 +53,8 @@ const parseFlags = (argv: string[]): Flags => {
 }
 
 const printHelp = () => {
-  note(
+  intro("oh-pencode")
+  log.info(
     [
       "oh-pencode install      pen 에이전트 세트를 ~/.config/opencode 에 설치",
       "oh-pencode verify       설치 상태를 검증",
@@ -70,7 +71,6 @@ const printHelp = () => {
       "  --models <mode>    convention | inherit",
       "  --help             도움말",
     ].join("\n"),
-    "oh-pencode",
   )
 }
 
@@ -120,7 +120,7 @@ const resolveAssets = async (flags: Flags): Promise<{ assets: AssetSource; versi
 }
 
 const printResult = (label: string, lines: string[], warnings: string[] = []) => {
-  if (lines.length > 0) note(lines.join("\n"), label)
+  if (lines.length > 0) log.info([label, ...lines].join("\n"))
   for (const warning of warnings) log.warn(warning)
 }
 
@@ -148,9 +148,9 @@ const main = async () => {
     spin.start("검증 중")
     const result = await runVerify({ directory: process.cwd(), })
     spin.stop(result.ok ? "검증 통과" : "검증 실패")
-    note(
-      result.checks.map((check) => `${check.ok ? "ok  " : "FAIL"} ${check.name}: ${check.detail}`).join("\n"),
-      "검증 결과",
+    const checks = result.checks.map((check) => `${check.ok ? "ok  " : "FAIL"} ${check.name}: ${check.detail}`)
+    log.info(
+      ["검증 결과", ...checks].join("\n"),
     )
     if (!result.ok) process.exitCode = 1
     return

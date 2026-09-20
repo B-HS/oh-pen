@@ -1,5 +1,30 @@
 # PROCESS
 
+## 작업: 스트림 설치 TTY·프롬프트 UI 수정
+
+- [x] a. 스크린샷과 실행 경로 진단 — `curl | bash`의 파이프 stdin 상속으로 방향키 escape sequence가 노출되고 좁은 터미널에서 안내 박스가 넘치는 현상 확인
+- [x] b. 실패 재현 — 파이프 stdin을 상속한 PTY에서 `↓`·Enter가 `^[[B`로 출력되고 선택이 진행되지 않는 현상 재현
+- [x] c. TTY 전달·반응형 프롬프트 수정 — 대화형 설치만 읽기·쓰기가 가능한 터미널 fd를 입력으로 사용하고 박스형 장문 안내를 짧은 흐름형 UI로 교체
+- [x] d. 위험 비례 검증 — 테스트 7건·타입검사·사이트 빌드·45열 PTY 방향키/Enter·비대화형 dry-run 통과
+- [ ] e. 선별 staging·Conventional Commit·일반 push 및 Pages 배포 확인
+
+### 완료 기준
+
+1. 문서의 `curl ... | bash` 설치 명령에서 방향키와 Enter가 정상 동작한다.
+2. `--no-interview`와 제어 터미널이 없는 자동화 환경은 기존처럼 실행된다.
+3. 좁은 터미널에서도 초기 안내 UI가 잘리거나 가로로 넘치지 않는다.
+4. 생성된 `install.sh`와 공개 GitHub Pages 배포본이 같은 수정 계약을 가진다.
+
+### 검증 결과
+
+| 검증 | 결과 |
+| --- | --- |
+| `bun run typecheck` | 통과 |
+| `bun test` | 7건 통과, 실패 0건 |
+| `bun run build:site` | 9 assets, 11 pages 생성 |
+| 대화형 스트림 설치 | 45열 PTY에서 `↓`로 선택 이동 후 Enter로 다음 질문 진입 |
+| 비대화형 설치 | 터미널 없는 `--no-interview --dry-run` 통과 |
+
 ## 작업: README·GitHub Pages 문서 경험 고도화
 
 - [x] a. 현재 배포본과 생성 소스 시각·구조 감사 — 랜딩의 과도한 카드 나열, 모바일 문서 내비게이션 부재, 문서형 위계 부족 확인

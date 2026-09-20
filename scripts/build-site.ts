@@ -31,8 +31,7 @@ const buildInstallerBundle = async () => {
   }
 }
 
-const buildInstallScript = async (version: string) => {
-  const script = `#!/usr/bin/env bash
+export const renderInstallScript = (version: string) => `#!/usr/bin/env bash
 set -euo pipefail
 
 # oh-pencode installer bootstrap
@@ -90,8 +89,33 @@ case "$COMMAND" in
   *) COMMAND=install ;;
 esac
 
-bun run "$TMP_DIR/oh-pencode.ts" "$COMMAND" --assets-dir "$TMP_DIR/assets" "$@"
+INTERACTIVE=false
+if [ "$COMMAND" = "install" ] || [ "$COMMAND" = "upgrade" ]; then
+  INTERACTIVE=true
+  for arg in "$@"; do
+    if [ "$arg" = "--no-interview" ]; then
+      INTERACTIVE=false
+      break
+    fi
+  done
+fi
+
+if [ "$INTERACTIVE" = true ]; then
+  if [ -t 1 ]; then
+    bun run "$TMP_DIR/oh-pencode.ts" "$COMMAND" --assets-dir "$TMP_DIR/assets" "$@" 0<&1
+  elif [ -t 2 ]; then
+    bun run "$TMP_DIR/oh-pencode.ts" "$COMMAND" --assets-dir "$TMP_DIR/assets" "$@" 0<&2
+  else
+    echo "대화형 설치에는 터미널이 필요합니다. 자동화에서는 --no-interview를 사용하세요." >&2
+    exit 1
+  fi
+else
+  bun run "$TMP_DIR/oh-pencode.ts" "$COMMAND" --assets-dir "$TMP_DIR/assets" "$@"
+fi
 `
+
+const buildInstallScript = async (version: string) => {
+  const script = renderInstallScript(version)
   await Bun.write(join(dist, "install.sh"), script)
 }
 
@@ -215,4 +239,4 @@ const main = async () => {
   for (const asset of assets) console.log(`  ${asset}`)
 }
 
-await main()
+if (import.meta.main) await main()
