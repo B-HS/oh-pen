@@ -55,7 +55,7 @@
 
 ## 3. installer가 쓰는 파일
 
-전역 설치만 지원하므로 다음 두 지점만 쓴다.
+전역 설치만 지원하므로 `~/.config/opencode/` 아래의 agents 디렉터리·config·oh-pencode 관리 디렉터리만 쓴다.
 
 ```text
 ~/.config/opencode/opencode.jsonc
@@ -64,7 +64,14 @@
 ~/.config/opencode/agents/research-pen.md
 ~/.config/opencode/agents/explore-pen.md
 ~/.config/opencode/agents/doc-pen.md
+~/.config/opencode/agents/verify-pen.md
+~/.config/opencode/agents/security-pen.md
+~/.config/opencode/agents/build.md          (hidden)
+~/.config/opencode/agents/plan.md           (hidden)
+~/.config/opencode/oh-pencode/manifest.json
 ```
+
+총 9개 agent 파일(7 pen + build/plan hidden) + config + manifest다.
 
 ### 설정 병합 방식
 
@@ -72,34 +79,40 @@ installer는 `opencode.jsonc`를 **통째로 덮어쓰지 않는다.** 다음을
 
 1. 기존 파일을 읽는다 (없으면 `{ "$schema": "..." }`로 시작).
 2. JSONC 주석·trailing comma를 보존해야 하므로 **`Bun.JSONC.parse`만으로는 부족**하다. installer는 다음 중 하나를 택한다.
-   - (권장) `opencode.jsonc`는 installer가 관리하는 **pen 블록만** 별도 파일로 두지 않고, JSONC를 파싱 → merge → `Bun.JSON.stringify`로 재직렬화하되 원본을 `.bak`으로 백업하고 사용자에게 "주석이 사라질 수 있음"을 고지한다.
+   - (권장) `opencode.jsonc`는 installer가 관리하는 **pen 블록만** 별도 파일로 두지 않고, JSONC를 파싱 → merge → `Bun.JSON.stringify`로 재직렬화하되 원본을 백업하고 사용자에게 "주석이 사라질 수 있음"을 고지한다.
    - (대안) 사용자가 이미 관리 중인 설정과 충돌하지 않도록 `--dry-run`에서 diff를 보여주고 승인받은 뒤에만 쓴다.
-3. merge 대상 키는 `default_agent`, `agents.<pen-id>.{hidden,disabled,...}`뿐이다. **사용자의 다른 키는 그대로 둔다.**
-4. 기존 `default_agent`가 pen이 아니면 **덮기 전에 질문**한다.
-5. 백업은 `~/.config/opencode/backup/<timestamp>/`에 둔다.
+
+   실제 구현(A2): 파싱 → merge → `JSON.stringify(value, null, 2)` 재직렬화를 쓴다. **주석·trailing comma는 소실되며**, 쓰기 전에 원본을 백업하고 소실 고지를 1줄 출력한다 (src/config.ts `writeConfig`).
+3. merge 대상 키는 `default_agent`, `model` (src/config.ts `managedConfigKeys`)뿐이다. **사용자의 다른 키는 그대로 둔다.**
+4. 기존 `default_agent`가 pen이 아니면 인터뷰에서 확인 질문을 한다 (`--no-interview`면 pen으로 설정한다).
+5. 백업은 `~/.config/opencode/oh-pencode/backup/<timestamp>/`에 둔다 (src/paths.ts `backupDir`).
 
 ### 멱등성
 
 - agents/`*.md`는 installer가 관리하는 파일이므로 재실행 시 전체 재생성한다.
-- 사용자가 그 파일을 수정했을 수 있으므로 **해시를 manifest에 기록**하고, 다르면 덮기 전에 경고한다.
+- 사용자가 그 파일을 수정했을 수 있으므로 **해시를 manifest에 기록**하고, 다르면 확인 없이 자동 보존하고 경고만 출력한다 (`--force`면 덮는다).
 - manifest: `~/.config/opencode/oh-pencode/manifest.json`
 
 ```jsonc
 {
-  "version": 1,
+  "version": "0.1.0",
   "installedAt": "2026-09-20T00:00:00.000Z",
-  "files": {
-    "agents/pen.md": { "hash": "sha256:...", "managed": true },
-  },
-  "configKeys": ["default_agent", "agents.build.hidden", "agents.plan.hidden"],
+  "models": { "pen": "openai/gpt-5.6-sol#high" },
+  "files": [
+    { "path": "agents/pen.md", "sha256": "<설치된 내용 해시>", "originSha256": "<asset 원본 해시>" },
+  ],
+  "config": { "defaultAgent": "pen", "rootModel": "openai/gpt-5.6-sol#high" },
 }
 ```
 
+- `files`의 `sha256`은 설치 시점의 디스크 내용 해시, `originSha256`은 asset 원본 해시다. 사용자 수정 판별은 두 값 비교로 한다 (src/fs.ts `ManagedFile`).
+- `config`는 installer가 설정한 값이며, uninstall은 이 값과 일치할 때만 되돌린다.
+
 ### uninstall
 
-- manifest에 기록된 파일만 지운다.
-- `opencode.jsonc`에서는 installer가 추가한 키만 제거한다. 사용자가 이후 수정했으면 경고하고 건너뛴다.
-- 백업 복원 옵션을 제공한다.
+- manifest에 기록된 파일만 지운다. 디스크 내용 해시가 manifest의 `sha256`과 다르면(사용자 수정) `--force` 없이는 보존한다.
+- `opencode.jsonc`에서는 installer가 설치한 `default_agent`·`model` 값과 일치할 때만 제거한다. 사용자가 바꿨으면 경고하고 유지한다.
+- 백업 복원 옵션(`--restore`)은 미구현이다. 백업 디렉터리는 남아 있다.
 
 ---
 
@@ -126,12 +139,15 @@ opencode debug agents          # agent별 mode/hidden/model/permissions/system �
 opencode debug paths           # 경로 확인
 ```
 
-`opencode debug agents`는 JSON을 출력하므로 installer의 `verify` 단계에서 파싱해 다음을 단언할 수 있다.
+`opencode debug agents`는 JSON을 출력하므로 installer의 `verify` 단계에서 파싱해 다음을 단언한다 (src/verify.ts).
 
-- `pen`이 존재하고 `mode: primary`, `hidden !== true`
-- `build`·`plan`이 `hidden: true`
-- 각 `*-pen` subagent에 기대한 `model`과 `permissions`가 반영됨
-- `default_agent`가 `pen` (config source에서 확인)
+- `pen`이 존재하고 `mode: primary`
+- `build`·`plan`의 agent 파일이 전역 agents 디렉터리에 존재하는지 (파일 존재 검사. `hidden: true` 속성 단언은 아님)
+- 각 `*-pen` subagent의 `mode`와, manifest에 기록된 기대 `model`의 반영
+- `default_agent`가 `pen` (config에서 확인)
+- root `model`이 manifest 기록 값과 일치 (manifest.config.rootModel이 있는 경우)
+
+permissions 반영 검증은 미구현이다. 실제 검사 항목은 파일 존재·mode·model·default_agent·root model이다.
 
 ### reload
 
@@ -149,4 +165,4 @@ opencode reload
 - top-level `permissions`는 **모든 agent에 append**된다. installer는 전역 `permissions`를 쓰지 않고 `agents.<id>.permissions`만 쓴다.
 - `.env` 읽기는 `ask`, `external_directory`는 `ask`가 기본이다. pen이 파일을 읽을 때 이 동작을 유지한다.
 - `opencode.jsonc`가 없는 상태에서 `opencode`를 처음 실행하면 마이그레이션이 일어날 수 있다. installer는 `service.json` 같은 다른 파일을 건드리지 않는다.
-- `~/.config/opencode/AGENTS.md`는 사용자 전역 지시 파일이다. installer는 **내용을 수정하지 않고**, 필요하면 별도 파일(`oh-pencode/pen-instructions.md`)을 만들고 사용자가 참조하도록 안내한다.
+- `~/.config/opencode/AGENTS.md`는 사용자 전역 지시 파일이다. installer는 **내용을 수정하지 않는다.** 별도 안내 파일 생성(`oh-pencode/pen-instructions.md`)은 미구현이다.

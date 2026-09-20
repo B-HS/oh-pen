@@ -21,17 +21,17 @@
 
 | ID | mode | 역할 | 권한 (pen 대비) |
 | --- | --- | --- | --- |
-| `pen` | primary | 오케스트레이터. 요구 해석·분해·통합·검증 근거·Git | 전체 허용, `question` 허용, subagent 호출 허용 |
-| `sub-pen` | subagent | 실행자. 상세 작업 계약을 받아 구현·검증 | pen과 동일. 단 subagent 호출 불가 |
-| `research-pen` | subagent | 기획·조사. 구현 전 사실·제약·선행 조건 | 읽기·검색·web. 편집 불가 |
-| `explore-pen` | subagent | 코드베이스 탐색. 패턴·심볼·구조 | 읽기·검색만. 편집·web 불가 |
-| `doc-pen` | subagent | 외부 문서 심층 분석. 공식 스펙·API 계약 | 읽기·검색·web + 외부 문서 경로 읽기 |
-| `verify-pen` | subagent | 독립 검증. 변경 위험을 직접 덮는 최소 검증 실행 | 읽기·검색·shell(검증 명령 한정) |
-| `security-pen` | subagent | 보안 감사. 시크릿·인증·injection·의존성 | 읽기·검색·web. 편집 불가 |
+| `pen` | primary | 오케스트레이터. 요구 해석·분해·통합·검증 근거·Git | auto-mode, subagent 명시 6종 허용, agents/* 편집 허용 |
+| `sub-pen` | subagent | 실행자. 상세 작업 계약을 받아 구현·검증 | pen과 동일. 단 subagent·question 불가 |
+| `research-pen` | subagent | 기획·조사. 구현 전 사실·제약·선행 조건 | 읽기·검색·web. 편집·shell 불가 |
+| `explore-pen` | subagent | 코드베이스 탐색. 패턴·심볼·구조 | 읽기·검색만. 편집·shell·web 불가 |
+| `doc-pen` | subagent | 외부 문서 심층 분석. 공식 스펙·API 계약 | 읽기·검색·web. 편집·shell 불가 (외부 경로는 ask) |
+| `verify-pen` | subagent | 독립 검증. 변경 위험을 직접 덮는 최소 검증 실행 | 읽기·검색. 편집·web 불가, shell은 전역 기본 allow |
+| `security-pen` | subagent | 보안 감사. 시크릿·인증·injection·의존성 | 읽기·검색·web. 편집·shell 불가 |
 
 - `pen`을 제외한 모두 `mode: subagent`.
 - **모든 `*-pen`은 visible** (사용자 결정). `@` mention과 자동완성에 노출된다.
-- 사용자가 자기 subagent를 추가할 수 있도록 이름 규칙을 권장한다: `*-pen`.
+- 사용자가 subagent를 추가할 때 이름 규칙 `*-pen`을 권장한다. 다만 pen의 subagent 허용 목록은 **명시 목록**이므로 (사용자 결정, §6 참조) 새 agent는 pen asset에 ID를 직접 추가해야 한다.
 
 ### build/plan 숨김
 
@@ -109,7 +109,7 @@ hidden: true
 3. 반영 확인: `opencode debug agents` (subagent 등록 상태) 또는 `opencode reload`.
 4. 위임 시작.
 
-주의: `.md` 파일을 수정하면 파일 해시가 manifest와 달라진다. installer의 `upgrade`는 **사용자가 바꾼 model 줄을 보존**하고 나머지만 갱신해야 한다.
+주의: `.md` 파일을 수정하면 파일 해시가 manifest와 달라진다. installer의 upgrade에서 **사용자가 바꾼 model 줄 보존은 미구현**이다. 현재 upgrade는 install 재실행과 동일하게 동작하며, 수정한 파일은 보존(갱신하지 않음)된다.
 
 주의: pen asset의 `permissions`에 `edit: ~/.config/opencode/agents/*`와 `external_directory: ~/.config/opencode/*`가 허용되어 있어야 pen이 자기 에이전트 파일의 모델을 바꿀 수 있다.
 
@@ -125,18 +125,28 @@ hidden: true
 
 ### 권한 설계
 
+아래 표는 설계 의도이며, 실제 규칙과의 차이는 뒤의 "실제 규칙" 목록에 정리했다.
+
 | action | pen | sub-pen | research-pen | explore-pen | doc-pen | verify-pen | security-pen |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `read` | allow | allow | allow | allow | allow | allow | allow |
 | `glob`/`grep` | allow | allow | allow | allow | allow | allow | allow |
 | `edit` | allow | allow | deny | deny | deny | deny | deny |
-| `shell` | allow | allow | deny | deny | deny | allow(검증) | deny |
+| `shell` | allow | allow | deny | deny | deny | allow | deny |
 | `webfetch`/`websearch` | allow | allow | allow | deny | allow | deny | allow |
-| `subagent` | allow `*-pen` | deny | deny | deny | deny | deny | deny |
+| `subagent` | 명시 6종 allow | deny | deny | deny | deny | deny | deny |
 | `question` | allow | deny | deny | deny | deny | deny | deny |
-| `external_directory` | ask | ask | ask | ask | allow(문서 경로) | ask | ask |
+| `external_directory` | `~/.config/opencode/*`만 allow | ask | ask | ask | ask | ask | ask |
 | `read *.env*` | deny | deny | deny | deny | deny | deny | deny |
 
+### 실제 규칙 (assets/agents/*.md frontmatter 기준)
+
+- **shell 규칙은 pen·sub-pen·verify-pen에 없다.** 규칙이 없으면 전역 기본 `allow`가 적용된다. 즉 research-pen·explore-pen·doc-pen·security-pen의 `shell deny`만 명시돼 있다. verify-pen의 shell은 "검증 명령 한정"이 아니라 **전역 기본 allow**다.
+- **external_directory 규칙은 pen에만 있다.** pen은 `~/.config/opencode/*`만 `allow`하고 나머지는 전역 기본 `ask`를 따른다. doc-pen의 "문서 경로 allow" 규칙은 없다 — doc-pen의 외부 문서 읽기는 전역 기본 `ask`다.
+- **pen의 edit 규칙은 `~/.config/opencode/agents/*`에만 allow**이고, 그 외 경로는 전역 기본 `allow`(와일드카드 규칙 없음)를 따른다.
+- **pen의 question 규칙은 없다.** 전역 기본 `allow`다. 나머지 6종은 명시 `deny`다.
+- 모든 agent에 `read *.env`·`*.env.*` `deny`와 `*.env.example` `allow`가 있다.
+- 주의: 이 `.env` read deny는 **read tool에만 적용**된다. shell을 통한 파일 읽기(예: `cat .env`)는 차단되지 않는다 — shell 규칙이 없는 agent는 전역 기본 allow다. 알려진 제약이며 security-pen 감사 시 이 경계를 확인한다.
 - `deny`는 사용자가 명시적으로 허용하지 않는 한 유지한다.
 - `sub-pen`이 `question`을 deny하는 이유: 부모에게 물어야 하는 구조이므로 사용자에게 직접 묻지 않는다. (`agent`의 `question` deny는 사용자에게 프롬프트를 띄우지 못하게 한다.)
 
@@ -228,11 +238,11 @@ permissions:
     resource: "research-pen"
     effect: allow
   - action: subagent
-    resource: "*-pen"      # 사용자 추가분
+    resource: "<새 agent ID>"
     effect: allow
 ```
 
-`*-pen` glob을 pen 허용 목록에 넣으면 사용자가 추가한 `*-pen`도 자동으로 허용된다.
+**명시 목록 방식이 채택됐다** (사용자 결정). pen asset의 `subagent` 규칙은 `*` deny 뒤에 `sub-pen`, `research-pen`, `explore-pen`, `doc-pen`, `verify-pen`, `security-pen` 6종을 하나씩 `allow`한다. glob(`*-pen`) 방식은 채택하지 않았다 — 사용자가 `*-pen` 이름의 agent를 추가하면 pen asset의 허용 목록에 그 ID를 직접 추가해야 한다. glob을 쓰면 통제 없이 임의 `*-pen` agent가 호출 가능해지므로 명시 통제를 택했다.
 
 ---
 
@@ -249,3 +259,4 @@ permissions:
 | `default_agent`는 기존 세션을 바꾸지 않음 | 새 세션에만 적용 |
 | `title`/`summary`/`compaction`은 hidden 시스템 agent | 설정하지 않는다 |
 | V2에 built-in `scout` 없음 | `doc-pen`이 그 역할을 대체 |
+| `.env` read deny는 read tool에만 적용 | shell(`cat .env` 등)을 통한 읽기는 차단되지 않는다. shell 규칙이 없는 agent는 전역 기본 allow다. 알려진 제약 (security-pen 감사 시 확인) |

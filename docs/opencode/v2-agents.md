@@ -222,6 +222,8 @@ Review the current changes. List findings in severity order with file and line r
 ]
 ```
 
+주의: `read *.env deny`는 **read tool 경로만 막는다.** shell(`cat .env` 등)을 통한 읽기는 `shell` 규칙이 없는 agent에서 차단되지 않는다 (전역 기본 `allow`). 시크릿 경계를 보려면 `shell` 규칙도 필요하다.
+
 ### 병합 동작 (실측으로 확인한 함정)
 
 global `permissions`는 먼저 적용되고, agent별 규칙이 **뒤에 append**된다. `general`·`title`·`compaction` 같은 다른 agent에도 규칙이 붙는다.

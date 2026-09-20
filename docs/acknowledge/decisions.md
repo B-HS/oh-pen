@@ -32,6 +32,7 @@
 | D8 | 서브에이전트 세트 | pen, sub-pen, research-pen, explore-pen, doc-pen **+ verify-pen, security-pen** (총 7) | 확장 가능하게 |
 | D9 | installer 실행 방식 | **GitHub Pages + curl** | `curl -fsSL .../install.sh \| bash` |
 | D10 | 설치 방식 | **installer 제작** (oh-my-openagent 스타일) | 지금 바로 전역에 설치하지 않는다 |
+| D11 | 이번 세션 (2026-09-20) | 전수조사·정합성 검사·README 재작성·install:local 수정·무결성 검증 구현 | `scripts/build-site.ts`의 `verifyIntegrity`, manifest sha256, dead export 제거 포함 |
 
 ## 3. 전제 (실측으로 확인)
 
@@ -52,13 +53,15 @@
 - `~/.claude/convention/` 의 문서를 기준으로 한다 (`~/AGENTS.md`가 참조).
 - `docs/PROCESS.md`를 세션 간 상태 기준으로 삼는다.
 - 커밋은 Conventional Commits, AI 트레일러 금지, 선별 스테이징.
-- 이 프로젝트는 아직 git 저장소가 아니다. `git init`은 사용자 확인 후 진행한다.
+- git 저장소: GitHub 원격 `https://github.com/B-HS/oh-pen.git`, `main` 단일 브랜치. Pages 배포는 `https://b-hs.github.io/oh-pen`.
 
-## 5. 미해결 (사용자 확인 필요)
+## 5. 미해결 → 해소 완료
 
-| # | 항목 | 선택지 |
-| --- | --- | --- |
-| U1 | git 저장소 초기화 | `git init` 여부, GitHub 원격·Pages 설정 |
-| U2 | GitHub Pages 경로 | `<user>.github.io/oh-pencode` |
-| U3 | 인터뷰 UI 라이브러리 | `@clack/prompts` vs 자체 `readline` |
-| U4 | pen 허용 목록에 `*-pen` glob 사용 여부 | 확장 편의 vs 명시 통제 |
+초기 미해결 항목 U1~U4는 모두 해소됐다.
+
+| # | 항목 | 초기 선택지 | 해소 결과 |
+| --- | --- | --- | --- |
+| U1 | git 저장소 초기화 | `git init` 여부, 원격·Pages 설정 | 해소: GitHub 원격 `https://github.com/B-HS/oh-pen.git`, `main` 단일 브랜치, Pages 배포 |
+| U2 | GitHub Pages 경로 | `<user>.github.io/oh-pencode` | 해소: `https://b-hs.github.io/oh-pen` |
+| U3 | 인터뷰 UI 라이브러리 | `@clack/prompts` vs 자체 `readline` | 해소: `@clack/prompts` 채택 (src/interview.ts) |
+| U4 | pen 허용 목록에 `*-pen` glob 사용 여부 | 확장 편의 vs 명시 통제 | 해소: **명시 목록** (사용자 결정, architecture.md §6) |
