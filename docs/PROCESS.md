@@ -6,8 +6,8 @@
 - [x] b. README 정보 구조 재작성 — 빠른 설치, 자율 실행 흐름, 에이전트·모델·Git·문서화 계약을 실제 동작 기준으로 정리
 - [x] c. GitHub Pages 랜딩·문서 셸 재설계 — 제품 개요와 문서 탐색이 분리되는 반응형 문서 포털 구현
 - [x] d. 접근성·반응형·링크·HTML 무결성 검증 — 데스크톱·모바일·다크 모드 렌더, 모바일 문서 메뉴, 329개 내부 링크 확인
-- [ ] e. GitHub Pages 배포 확인 — Actions 완료 후 공개 URL의 새 콘텐츠와 주요 문서 페이지 확인
-- [ ] f. 선별 staging·Conventional Commit·일반 push
+- [x] e. GitHub Pages 배포 확인 — Actions `35515014150` 성공, 공개 랜딩·에이전트 설계 문서의 새 렌더 확인
+- [x] f. 선별 staging·Conventional Commit·일반 push — `e31cb84`를 `origin/main`에 push 완료
 
 ### 완료 기준
 
@@ -16,6 +16,17 @@
 3. 문서 페이지는 데스크톱의 좌측 내비게이션·본문·우측 목차와 모바일 문서 내비게이션을 제공한다.
 4. 라이트·다크 테마, 키보드 포커스, 축소 모션, 가로 넘침 없는 모바일 레이아웃을 유지한다.
 5. 빌드·타입검사·내부 링크 검사·실제 브라우저 시각 검증을 통과한 결과만 배포한다.
+
+### 검증 결과
+
+| 검증 | 결과 |
+| --- | --- |
+| `bun run typecheck` | 통과 |
+| `bun test` | 5건 통과, 실패 0건 |
+| `bun run build:site` | 9 assets, 11 pages 생성 |
+| HTML 무결성 | HTML 10개, 내부 링크 329개, 누락 0, 중복 ID 0, 페이지별 H1 1개 |
+| 실제 브라우저 | 1440px 랜딩·3열 문서, 모바일 랜딩·문서 메뉴, 다크 모드, 복사 버튼 확인 |
+| GitHub Pages | [Actions run 35515014150](https://github.com/B-HS/oh-pen/actions/runs/35515014150) 성공, [공개 사이트](https://b-hs.github.io/oh-pen/) 반영 확인 |
 
 ## 작업: 에이전트 자율 실행 고도화
 
