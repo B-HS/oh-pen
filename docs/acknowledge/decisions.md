@@ -33,6 +33,7 @@
 | D9 | installer 실행 방식 | **GitHub Pages + curl** | `curl -fsSL .../install.sh \| bash` |
 | D10 | 설치 방식 | **installer 제작** (oh-my-openagent 스타일) | 지금 바로 전역에 설치하지 않는다 |
 | D11 | 이번 세션 (2026-09-20) | 전수조사·정합성 검사·README 재작성·install:local 수정·무결성 검증 구현 | `scripts/build-site.ts`의 `verifyIntegrity`, manifest sha256, dead export 제거 포함 |
+| D12 | 공식 사이트 디자인 | **trip 저장소의 `docs/DESIGN.md`를 디자인 계약으로 채택** | 랜딩은 Surface B(공개 페이지), docs는 Surface A(제품 콘솔). §1-2가 금지한 무단 통일을 피하려 `body.surface-a`/`body.surface-b` 스코프로 분리하고 팔레트 tier만 공유한다 |
 
 ## 3. 전제 (실측으로 확인)
 

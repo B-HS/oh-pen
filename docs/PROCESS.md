@@ -40,6 +40,7 @@
 - [x] docs 정합성 수정 (이 문서 포함 6개 문서를 실제 구현 기준으로)
 - [x] README 재작성 (rotater 스타일, 실제 동작 기준)
 - [x] 커밋·푸시 (docs·src 수정 통합, Pages 재배포 확인)
+- [x] 공식 사이트 (DESIGN.md 기반 랜딩 + docs 7페이지 + 404, 무결성·접근성 검증)
 
 ### 상세
 
@@ -80,6 +81,9 @@
 | end-to-end 위임 | pen → explore-pen / sub-pen 호출·통합·커밋 확인 |
 | `.env` deny 경계 | pen이 거부 확인 |
 | uninstall | 파일·config 키 복원 확인 |
+| 사이트 빌드 | 9 assets + 11 pages (site.css·index·404·docs 8) |
+| 사이트 링크 전수 검사 | href 247개 해석 실패 0건 (depth 0/1/2), 중복 id 0, toc↔헤딩 일치 |
+| 사이트 DESIGN.md 준수 | 팔레트 40값 verbatim, 700 가중치 0, 스피너 0, 이모지 0, Surface A radius 0·shadow none 확인 |
 
 ### 저장소
 
