@@ -37,9 +37,9 @@
 - [x] README 작성
 - [x] GitHub Actions Pages 배포 워크플로
 - [x] 전수조사 (src·scripts·assets·docs·README·배포본 대조, 부정합 목록화)
-- [ ] docs 정합성 수정 (이 문서 포함 6개 문서를 실제 구현 기준으로)
-- [x] README 재작성 (실제 동작 기준)
-- [ ] 커밋·푸시 (docs·src 수정 통합)
+- [x] docs 정합성 수정 (이 문서 포함 6개 문서를 실제 구현 기준으로)
+- [x] README 재작성 (rotater 스타일, 실제 동작 기준)
+- [x] 커밋·푸시 (docs·src 수정 통합, Pages 재배포 확인)
 
 ### 상세
 
@@ -72,9 +72,10 @@
 | 런타임 모델 변경 (subagent `.md` 수정) | `debug agents`에 반영 확인 |
 | 런타임 모델 변경 (primary root model) | 세션 실행 모델 반영 확인 |
 | HTTP 배포본 install.sh → install/verify | 통과 |
-| **GitHub Pages 배포본 (b-hs.github.io/oh-pen)** | install.sh·manifest 200, verify 통과 |
+| **GitHub Pages 배포본 (b-hs.github.io/oh-pen)** | install.sh·manifest 200, 배포본 manifest에 sha256 맵 10개 키 반영 확인 |
+| 독립 검증 (verify-pen) | typecheck·build·install:local·verify 27개·uninstall dry-run·install.sh 변조 차단(exit 1)·http 거부·서버·TMP 잔존 없음 확인 |
 | `install:local` | 수정 전 실패(exit 1) → 수정 후 통과 (`--base-url ./dist` 로컬 경로 해석) |
-| install.sh 해시 검증 | 구현: 다운로드 파일을 manifest sha256과 비교, 불일치 시 exit 1 |
+| install.sh 해시 검증 | 구현: 다운로드 파일을 manifest sha256과 비교, 불일치 시 exit 1 (변조 재현 확인) |
 | dead export 제거 | 5개 제거 (verifyInstallTarget, managedAgentIds, ManagedAgentId, userAgentSuffix, toRelative) |
 | end-to-end 위임 | pen → explore-pen / sub-pen 호출·통합·커밋 확인 |
 | `.env` deny 경계 | pen이 거부 확인 |
@@ -85,4 +86,4 @@
 - 로컬: `/Users/hyunseokbyun/development/oh-pencode`
 - 원격: <https://github.com/B-HS/oh-pen>
 - 배포: <https://b-hs.github.io/oh-pen/>
-- 커밋: `729a53b` feat, `fd2f908` fix, `b7dc4c1` ci, `76a29bf` docs
+- 커밋: `729a53b` feat, `fd2f908` fix, `b7dc4c1` ci, `76a29bf` docs, `01398d8` fix, `3d1a31d` docs, `b53fa75` docs
