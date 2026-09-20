@@ -12,7 +12,7 @@
 
 </div>
 
-oh-pencode installs a single primary agent, `pen`, into the global OpenCode V2 config directory. `pen` replaces the built-in `build` and `plan` agents, runs in auto-mode by asking for no permission approvals, and delegates work to six specialized subagents: `sub-pen` for execution, `research-pen` for planning, `explore-pen` for codebase search, `doc-pen` for external documentation, `verify-pen` for independent verification, and `security-pen` for security audits. Each subagent carries its own model assignment, so the same delegation can run different models per role.
+oh-pencode installs a single primary agent, `pen`, into the global OpenCode V2 config directory. `pen` replaces the built-in `build` and `plan` agents, decides when delegation is useful, and completes requested implementation through verification, commit, and normal push without routine approval prompts. Six specialized subagents cover execution, research, codebase exploration, official documentation, independent verification, and security review. Each role may use a convention default, inherit the primary model, or use any connected OpenCode `provider/model#variant` selected during installation.
 
 ## Install
 
@@ -50,27 +50,35 @@ The installer downloads `install.sh`, `manifest.json`, and every asset listed in
 
 | Agent | Mode | Role | Permissions |
 | --- | --- | --- | --- |
-| `pen` | primary | Orchestrates: parses requirements, decomposes work, integrates results, owns Git | Full auto-mode, `deny` rules for `.env` kept |
-| `sub-pen` | subagent | Executes a detailed work contract within an assigned scope | Same as `pen`, cannot spawn subagents |
+| `pen` | primary | Orchestrates or executes, integrates results, owns verification and Git | Project tools and normal commit/push; force push denied |
+| `sub-pen` | subagent | Executes a detailed work contract within an assigned scope | Project tools; Git mutation and nested subagents denied |
 | `research-pen` | subagent | Investigates facts, constraints, and prerequisites before implementation | Read, search, web |
 | `explore-pen` | subagent | Finds patterns, symbols, and structure in a codebase | Read, search only, no network |
-| `doc-pen` | subagent | Reads official documentation and API contracts in depth | Read, search, web |
-| `verify-pen` | subagent | Runs the smallest independent verification that covers a change's risk | Read, search, shell |
-| `security-pen` | subagent | Audits secrets, auth, injection, and dependencies | Read, search, web, no shell |
+| `doc-pen` | subagent | Extracts official usage and API contracts, then saves reusable guidance | Read, search, web, edit under `docs/**` only |
+| `verify-pen` | subagent | Runs the smallest independent verification that covers a change's risk | Read, search, shell; no source or Git mutation |
+| `security-pen` | subagent | Audits secrets, auth, injection, and dependencies | Read, search, web, package-manager audit commands |
 
 `build` and `plan` are installed as hidden stubs so the pen set owns the primary slot. The installer writes only under `~/.config/opencode/`.
 
 ## Usage
 
 1. Start a new OpenCode session. `pen` is the default agent.
-2. Before starting work, `pen` asks two questions in one message: whether to use the multi-agent workflow, and which models to assign.
-3. If the workflow is on, `pen` decomposes the task, injects a nine-item delegation contract into each subagent prompt, runs independent work in parallel with `background: true`, integrates the results, and owns commits and pushes.
+2. Give the task directly. `pen` classifies read-only and mutating requests, then decides whether direct execution or delegation is more appropriate.
+3. For change requests, `pen` completes implementation, proportional verification, selective staging, commit, and normal push. It asks only when new authority, secrets, a user-visible contract decision, or a destructive operation is required.
 
 Model assignment
 
-- Subagent models are set in `~/.config/opencode/agents/<id>.md` on the `model:` line. Changes take effect on the next model request without a restart.
+- The installer supports convention defaults, primary-model inheritance, or direct `provider/model#variant` input for every agent.
+- Subagent models are set in `~/.config/opencode/agents/<id>.md` on the `model:` line. Any model connected to OpenCode can be selected, and changes take effect on the next child-session request.
 - The primary session model is fixed by the root `model` key in `~/.config/opencode/opencode.jsonc`. A `model:` field in `agents/pen.md` has no effect on the primary session.
-- `pen` asks for the assignment at the start of each task and does not persist the choice as a long-term default.
+- `pen` uses the installed assignment without asking on every task. A user-provided model override is applied only when explicitly requested; unavailable models are reported instead of silently replaced.
+- Reinstall and upgrade preserve a user-edited `model:` line while refreshing the managed agent prompt and permissions. Other manual prompt edits remain fully preserved unless `--force` is used.
+
+Documentation workflow
+
+- `doc-pen` prioritizes official sources and records reusable setup, configuration, API usage, defaults, version differences, and project-specific cautions under `docs/**`.
+- It follows an existing documentation taxonomy when possible and falls back to `docs/references/<topic>.md`.
+- One-off facts and duplicate material are returned to `pen` without creating another file.
 
 ## Development
 

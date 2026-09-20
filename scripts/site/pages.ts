@@ -36,8 +36,8 @@ const homeFeatures: { icon: IconName; title: string; text: string }[] = [
   },
   {
     icon: "shield",
-    title: "Auto-mode with deny kept",
-    text: "Approvals are granted without prompts, while deny rules for secrets and out-of-scope paths stay enforced.",
+    title: "Autonomous delivery",
+    text: "Change requests continue through proportional verification, selective staging, commit, and normal push without routine prompts.",
   },
   {
     icon: "check",
@@ -52,7 +52,7 @@ const homeFeatures: { icon: IconName; title: string; text: string }[] = [
   {
     icon: "list",
     title: "Per-role model assignment",
-    text: "Each subagent carries its own model, and pen asks for the assignment at the start of every task.",
+    text: "Use convention defaults, inherit the primary model, or assign any connected OpenCode model without repeating the choice per task.",
   },
   {
     icon: "pen",
@@ -67,14 +67,14 @@ const agentRows: { id: string; mode: keyof typeof agentModeBadge; role: string; 
   {
     id: "pen",
     mode: "primary",
-    role: "Orchestrates: parses requirements, decomposes work, integrates results, owns Git",
-    permissions: `Full auto-mode, <code class="mono">deny</code> rules for <code class="mono">.env</code> kept`,
+    role: "Executes or delegates, integrates results, verifies, commits, and pushes",
+    permissions: `Project tools and normal Git push; force push <code class="mono">deny</code>`,
   },
   {
     id: "sub-pen",
     mode: "subagent",
     role: "Executes a detailed work contract within an assigned scope",
-    permissions: "Same as pen, cannot spawn subagents",
+    permissions: "Project tools; Git mutation and nested subagents denied",
   },
   {
     id: "research-pen",
@@ -91,20 +91,20 @@ const agentRows: { id: string; mode: keyof typeof agentModeBadge; role: string; 
   {
     id: "doc-pen",
     mode: "subagent",
-    role: "Reads official documentation and API contracts in depth",
-    permissions: "Read, search, web",
+    role: "Extracts official usage and saves reusable project documentation",
+    permissions: `Read, search, web, edit <code class="mono">docs/**</code>`,
   },
   {
     id: "verify-pen",
     mode: "subagent",
     role: "Runs the smallest independent verification that covers a change's risk",
-    permissions: "Read, search, shell",
+    permissions: "Read, search, shell; no source or Git mutation",
   },
   {
     id: "security-pen",
     mode: "subagent",
     role: "Audits secrets, auth, injection, and dependencies",
-    permissions: "Read, search, web, no shell",
+    permissions: "Read, search, web, package-manager audit commands",
   },
 ]
 
@@ -151,7 +151,7 @@ export const homePage = (): string =>
       "Install the oh-pen agent set for OpenCode V2: one pen primary agent, six specialized subagents, SHA-256 verified installs.",
     body: `<section class="hero" aria-labelledby="home-hero-title">
   <h1 class="hero-title" id="home-hero-title">oh-pencode</h1>
-  <p class="hero-sub">A single pen primary agent for OpenCode V2 — with six specialized subagents. build and plan are hidden, auto-mode skips approval prompts, and every subagent carries its own model.</p>
+  <p class="hero-sub">A single autonomous pen primary agent for OpenCode V2 — with six specialized subagents. build and plan are hidden, routine work runs through commit and push, and every role can use a connected model of your choice.</p>
   ${cmd(`curl -fsSL ${INSTALL_URL} | bash`)}
   <div class="hero-actions">
     <a class="btn btn--default" href="https://github.com/B-HS/oh-pen" rel="noreferrer">GitHub</a>

@@ -5,6 +5,7 @@
   "type": "module",
   "description": "pen agent set installer for OpenCode V2",
   "scripts": {
+    "test": "bun test",
     "install:local": "bun run src/cli.ts install --base-url ./dist",
     "verify": "bun run src/cli.ts verify",
     "uninstall:local": "bun run src/cli.ts uninstall --base-url ./dist",

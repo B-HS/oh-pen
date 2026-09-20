@@ -3,7 +3,7 @@ import { dirname, isAbsolute, join, relative } from "node:path"
 import type { AssetSource } from "./assets.ts"
 import { applyManagedKeys, readConfig, readRootModel, writeConfig, type ConfigChange } from "./config.ts"
 import { exists, listFiles, readManifest, sha256, timestamp, writeManifest, type Manifest } from "./fs.ts"
-import { writeModelLine } from "./models.ts"
+import { hasOnlyModelOverride, readModelLine, writeModelLine } from "./models.ts"
 import { backupDir, configFile, configRoot, manifestFile } from "./paths.ts"
 import type { InstallAnswers } from "./interview.ts"
 
@@ -113,11 +113,20 @@ export const install = async (options: InstallOptions): Promise<InstallResult> =
     const target = targetPathFor(root, assetPath)
     const assetContent = await options.assets.read(assetPath)
     const previousEntry = previous?.files.find((file) => file.path === `agents/${agentId}.md`)
+    let shouldPreserveModel = false
+    let preservedModel: string | undefined
 
     if (previousEntry && (await exists(target))) {
       const onDisk = await Bun.file(target).text()
       const userModified = sha256(onDisk) !== previousEntry.sha256
-      if (userModified && !options.force) {
+      const isOnlyModelOverride = hasOnlyModelOverride(onDisk, previousEntry.originSha256)
+      if (userModified && isOnlyModelOverride && !options.force) {
+        shouldPreserveModel = true
+        preservedModel = readModelLine(onDisk)
+        result.preserved.push(`${target} model`)
+        result.warnings.push(`${target} 의 사용자 지정 model을 보존하고 agent 본문을 갱신합니다.`)
+      }
+      if (userModified && !isOnlyModelOverride && !options.force) {
         result.preserved.push(target)
         result.warnings.push(`${target} 는 설치 후 수정되었습니다. 사용자 변경을 보존합니다.`)
         files.push({ path: `agents/${agentId}.md`, sha256: sha256(onDisk), originSha256: previousEntry.originSha256 })
@@ -125,13 +134,26 @@ export const install = async (options: InstallOptions): Promise<InstallResult> =
       }
     }
 
-    const model = options.answers.models[agentId]
+    const model = shouldPreserveModel ? preservedModel : options.answers.models[agentId]
     const content = model ? writeModelLine(assetContent, model) : assetContent
     await mkdir(dirname(target), { recursive: true })
     await Bun.write(target, content)
     files.push({ path: `agents/${agentId}.md`, sha256: sha256(content), originSha256: sha256(assetContent) })
     result.wrote.push(target)
   }
+
+  const installedModels = Object.fromEntries(
+    (
+      await Promise.all(
+        files.map(async (file) => {
+          const installedContent = await Bun.file(join(root, file.path)).text()
+          const installedModel = readModelLine(installedContent)
+          const agentId = file.path.split("/").at(-1)?.replace(/\.md$/, "") ?? ""
+          return installedModel ? [[agentId, installedModel] as const] : []
+        }),
+      )
+    ).flat(),
+  )
 
   const desiredDefaultAgent = options.answers.adoptDefaultAgent ? "pen" : undefined
   const desiredRootModel = options.answers.rootModel
@@ -149,7 +171,7 @@ export const install = async (options: InstallOptions): Promise<InstallResult> =
   const manifest: Manifest = {
     version: options.version,
     installedAt: new Date().toISOString(),
-    models: options.answers.models,
+    models: installedModels,
     files,
     config: {
       ...(previous?.config?.defaultAgent ? { defaultAgent: previous.config.defaultAgent } : {}),

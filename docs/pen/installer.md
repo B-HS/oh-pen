@@ -149,7 +149,9 @@ curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash
 6) 설치 요약을 보여주고 "이대로 설치할까요?" 최종 확인을 받는다.
 ```
 
-- 설치 시 인터뷰는 **1회**다. 세션마다의 모델 질문은 pen이 런타임에 한다 (architecture.md §3).
+- 설치 시 인터뷰는 **1회**다. 선택한 모델 배정을 이후 작업의 기본값으로 사용하며 pen은 매 작업마다 다시 묻지 않는다 (architecture.md §3).
+- convention은 추천 기본값일 뿐 강제가 아니다. `custom`을 선택하면 OpenCode에 연결한 임의의 `provider/model#variant`를 agent별로 입력할 수 있다.
+- 사용자가 런타임에 특정 subagent 모델을 명시하면 pen이 해당 agent 파일의 `model:`을 바꾸고 다음 child session부터 사용한다. 사용할 수 없는 모델을 다른 모델로 자동 대체하지 않는다.
 - `--no-interview`면 `default_agent=pen`과 root `model`은 **기존 값이 있으면 유지**하고, 나머지는 기본값(A: convention 배정, build/plan 숨김)으로 진행한다 (src/cli.ts `noInterviewAnswers`).
 
 ---
@@ -186,7 +188,9 @@ curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash
 
 - `agents/*.md`는 installer 관리 파일이다. 재실행 시 재생성한다.
 - **사용자가 수정한 흔적이 있으면** (해시 불일치) 확인 질문 없이 자동 보존하고, 보존 사실을 경고로 출력한다 (src/install.ts: 기존 sha256과 디스크 해시 비교 → `preserved` + `warnings`).
-- upgrade 시의 `model:` 줄 보존은 **미구현**이다. 현재 upgrade는 install 재실행과 동일하게 동작한다.
+- 변경이 `model:` 줄뿐이면 사용자 지정 모델을 보존하면서 새 asset 본문과 permission을 갱신한다. model 줄을 제거해 이전 `originSha256`과 비교하므로 다른 본문 변경과 구분한다.
+- 갱신 뒤 manifest의 `models`는 설치 답변이 아니라 실제 설치 파일의 `model:` 값을 다시 읽어 기록하므로 verify 기대값과 일치한다.
+- model 외 본문을 수정한 파일은 `--force` 없이 전체 보존한다.
 - manifest에 관리 파일과 해시(`sha256`, `originSha256`)를 기록한다.
 
 ### uninstall
@@ -202,7 +206,7 @@ curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash
 ### installer 자체 검증
 
 - **에셋 sha256 검증** — `install.sh`가 다운로드한 `oh-pencode.ts`와 각 asset을 manifest의 `sha256` 맵과 비교한다. 불일치하면 `exit 1`로 중단한다. CLI도 http base-url일 때 manifest의 sha256으로 asset을 검증한다.
-- **에셋 내용 검증** — `scripts/build-site.ts`의 `verifyIntegrity`: agent md의 frontmatter·mode·description·hidden 존재와 빈 파일 여부를 확인한다.
+- **에셋 내용 검증** — `scripts/build-site.ts`의 `verifyIntegrity`: agent md의 frontmatter·mode·description·hidden 존재와 빈 파일 여부를 확인한다. custom agent는 prompt injection 경계, 역할별 mutation 제한, pen의 일반 push 허용·force push 차단, doc-pen의 `docs/**` edit 계약까지 단언한다.
 - **JSONC 재파싱 검증** — 미구현. 쓴 `opencode.jsonc`를 다시 파싱해 확인하는 단계는 없다.
 
 ### 설치 후 검증
