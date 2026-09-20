@@ -33,9 +33,9 @@ const buildInstallScript = async (version: string) => {
 set -euo pipefail
 
 # oh-pencode installer bootstrap
-# usage: curl -fsSL https://oh-pencode.github.io/oh-pencode/install.sh | bash -s -- [flags]
+# usage: curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- [flags]
 
-BASE_URL="\${OH_PENCODE_BASE_URL:-https://oh-pencode.github.io/oh-pencode}"
+BASE_URL="\${OH_PENCODE_BASE_URL:-https://b-hs.github.io/oh-pen}"
 VERSION="${version}"
 
 if ! command -v opencode >/dev/null 2>&1; then
@@ -107,14 +107,14 @@ const buildLandingPage = async (version: string) => {
     <p class="sub">OpenCode V2용 pen 에이전트 세트 installer · v${version}</p>
 
     <h2>설치</h2>
-    <pre><code>curl -fsSL https://oh-pencode.github.io/oh-pencode/install.sh | bash</code></pre>
+    <pre><code>curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash</code></pre>
 
     <h2>미리보기</h2>
-    <pre><code>curl -fsSL https://oh-pencode.github.io/oh-pencode/install.sh | bash -s -- --dry-run</code></pre>
+    <pre><code>curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- --dry-run</code></pre>
 
     <h2>검증 / 제거</h2>
-    <pre><code>curl -fsSL https://oh-pencode.github.io/oh-pencode/install.sh | bash -s -- verify
-curl -fsSL https://oh-pencode.github.io/oh-pencode/install.sh | bash -s -- uninstall</code></pre>
+    <pre><code>curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- verify
+curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- uninstall</code></pre>
 
     <h2>설치되는 것</h2>
     <ul>

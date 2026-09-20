@@ -24,7 +24,7 @@ type Flags = {
   help: boolean
 }
 
-const defaultBaseUrl = "https://oh-pencode.github.io/oh-pencode"
+const defaultBaseUrl = "https://b-hs.github.io/oh-pen"
 
 const parseFlags = (argv: string[]): Flags => {
   const commands: Command[] = ["install", "verify", "uninstall", "upgrade"]
@@ -121,7 +121,7 @@ const main = async () => {
   if (flags.command === "verify") {
     const spin = spinner()
     spin.start("검증 중")
-    const result = await runVerify({ directory: process.cwd(), expectHiddenBuiltins: true })
+    const result = await runVerify({ directory: process.cwd(), })
     spin.stop(result.ok ? "검증 통과" : "검증 실패")
     note(
       result.checks.map((check) => `${check.ok ? "ok  " : "FAIL"} ${check.name}: ${check.detail}`).join("\n"),

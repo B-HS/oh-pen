@@ -7,26 +7,26 @@ OpenCode V2용 **pen** 에이전트 세트 installer.
 ## 설치
 
 ```bash
-curl -fsSL https://oh-pencode.github.io/oh-pencode/install.sh | bash
+curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash
 ```
 
 미리보기(파일을 쓰지 않음):
 
 ```bash
-curl -fsSL https://oh-pencode.github.io/oh-pencode/install.sh | bash -s -- --dry-run
+curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- --dry-run
 ```
 
 비대화형(컨벤션 배정 기본값):
 
 ```bash
-curl -fsSL https://oh-pencode.github.io/oh-pencode/install.sh | bash -s -- --no-interview
+curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- --no-interview
 ```
 
 검증 / 제거:
 
 ```bash
-curl -fsSL https://oh-pencode.github.io/oh-pencode/install.sh | bash -s -- verify
-curl -fsSL https://oh-pencode.github.io/oh-pencode/install.sh | bash -s -- uninstall
+curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- verify
+curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- uninstall
 ```
 
 ## 요구 사항
