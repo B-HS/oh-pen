@@ -6,7 +6,7 @@
 - [x] b. 기존 agent 모델을 변경하지 않는 호출별 모델 지정 실측 — `opencode run --agent research-pen --model openai/gpt-5.6-terra#medium` 성공, 세션 export에서 역할·모델 확인, `parentID` 없음
 - [x] c. pen 자산·회귀 검사 수정 — 사용자 지정 모델은 CLI 플래그로 전달하고 설치된 `.md`/config는 변경하지 않음
 - [x] d. README·설계·합의·사이트 동기화 — native child와 CLI 별도 실행의 차이, 한계와 사용법 명시
-- [ ] e. 최소 검증·설치본 갱신·선별 커밋·일반 push·Pages 확인
+- [x] e. 최소 검증·설치본 갱신·선별 커밋·일반 push·Pages 확인
 
 ### 완료 기준
 
@@ -22,6 +22,7 @@
 - `bun run build:site`: 9 assets, 11 pages 생성.
 - `git diff --check`: 성공.
 - OpenCode v2.0.10에서 `research-pen`에 `--model openai/gpt-5.6-terra#medium`을 적용한 별도 세션을 확인했다. 설치본 재갱신 후에도 research agent와 root config의 SHA-256이 갱신 전과 동일하다.
+- `3f8730c`를 `main`에 일반 push했고, Pages 실행 `35565301918`의 build·deploy가 성공했다. 공개 `/oh-pen/assets/agents/pen.md`와 랜딩 페이지에 새 지시가 반영된 것을 확인했다.
 
 ## 작업: workflow·모델 시작 질문 복구
 
