@@ -62,9 +62,17 @@ curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- uninstall
 
 ## How it works
 
+Before a new tool-using task begins, `pen` asks once for both choices:
+
+1. Use the multi-agent workflow or let `pen` work directly.
+2. Keep the installed GPT role defaults, inherit the primary model, or assign connected models per role.
+
+The installed Sol, Terra, and Luna assignment remains the recommended default. After the answer, routine delivery proceeds without repeated approval prompts.
+
 ```mermaid
 flowchart LR
-    Request[Request] --> Pen[pen]
+    Request[Request] --> Choice[Workflow + model choice]
+    Choice --> Pen[pen]
     Pen -->|Direct work| Integrate[Integrate]
     Pen -->|Bounded contract| Specialists[Specialists]
     Specialists --> Integrate
@@ -72,8 +80,8 @@ flowchart LR
     Verify --> Git[Selective commit and normal push]
 ```
 
-1. `pen` reads the request and project contract, then defines observable completion.
-2. It works directly when delegation adds no value, or assigns independent units to the relevant specialists.
+1. `pen` reads the request and project contract, then asks for workflow and model choices before using tools.
+2. It works directly when workflow is declined, or assigns independent units to the relevant specialists when selected.
 3. It checks specialist evidence against the actual files and diff, resolves overlap, and keeps integration ownership.
 4. It runs the smallest verification that directly covers the changed risk.
 5. For change requests, it selectively stages only the intended files, commits, and normally pushes.
@@ -102,7 +110,7 @@ The installer supports three assignment modes for every role:
 - **Primary inheritance** uses the primary session model for a selected specialist.
 - **Direct assignment** accepts any OpenCode-connected `provider/model#variant` value supplied by the user.
 
-Assignments are installation defaults, not a permanent restriction. `pen` honors an explicit runtime model override when requested and reports an unavailable model instead of silently substituting another one.
+Assignments are installation defaults, not a permanent restriction. At each new tool-using task, `pen` offers the installed GPT mix, primary-model inheritance, and direct per-role assignment. It reports an unavailable model instead of silently substituting another one.
 
 Subagent models live on the `model:` line in `~/.config/opencode/agents/<id>.md`. The primary session model is controlled by the root `model` key in `~/.config/opencode/opencode.jsonc`; a `model:` field inside `agents/pen.md` does not control the primary session.
 

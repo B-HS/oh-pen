@@ -44,7 +44,8 @@
 
 ### 런타임 원칙
 
-- `pen`은 설치된 모델 배정을 기본값으로 사용하며 매 작업마다 다시 질문하지 않는다.
+- `pen`은 새 도구 사용 작업마다 workflow 사용 여부와 subagent 모델 방식을 함께 질문한다.
+- 기본 선택은 설치된 GPT 역할 배정이며, 사용자는 pen 모델 상속 또는 역할별 직접 지정을 선택할 수 있다.
 - 사용자가 특정 subagent 모델을 명시하면 `~/.config/opencode/agents/<id>.md`의 `model:`을 바꾸고 다음 child session부터 사용한다.
 - subagent tool에는 호출별 model 파라미터가 없으므로 agent 파일 변경 없이 한 번만 다른 모델을 주입할 수 없다.
 - primary 모델은 session에 저장된다. agent 파일의 `model:`은 선택된 primary session 모델을 바꾸지 않는다.
@@ -77,11 +78,13 @@
 
 ### workflow 선택
 
-- 사용자가 workflow 사용 여부를 명시하면 그대로 따른다.
-- 별도 지정이 없으면 `pen`이 작업의 독립성·복잡도·검증 분리 필요성을 판단한다.
-- 단일하고 명확한 작업은 직접 수행한다.
-- 독립된 조사·구현·검증은 background subagent로 병렬화한다.
+- 새 도구 사용 작업마다 workflow와 subagent 모델 방식을 한 번에 묻고 답을 기다린다.
+- 사용자가 현재 요청에서 두 선택을 이미 지정했으면 중복 질문하지 않는다.
+- 새 세션·resume·clear·compact·handoff·`PROCESS.md` 기반 재개에서는 다시 묻는다.
+- workflow를 사용하지 않으면 `pen`이 직접 수행한다.
+- workflow를 사용하면 독립된 조사·구현·검증을 background subagent로 병렬화한다.
 - 같은 파일 수정이나 선행 결과가 필요한 작업은 직렬화한다.
+- 선택 이후 요청 범위의 검증·선별 staging·commit·일반 push는 추가 승인 없이 진행한다.
 
 ### 위임 계약
 

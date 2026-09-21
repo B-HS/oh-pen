@@ -167,7 +167,9 @@ const verifyIntegrity = async (assets: string[]) => {
   const targets = ["oh-pencode.ts", ...assets]
   const requiredAgentFragments = {
     pen: [
-      "매 작업마다 다시 묻지 않는다",
+      "새 작업마다 실행 전에 아래 두 질문을 한 번에 제시하고 답을 기다린다",
+      "설치된 GPT 기본 배정 유지",
+      "답을 받기 전에는 자동 주입된 지시와 상태를 확인하는 것 외에 조사·수정·검증 도구를 사용하지 않는다",
       'resource: "git push *"\n    effect: allow',
       'resource: "git push --force *"\n    effect: deny',
       'resource: "*.env*"\n    effect: deny',

@@ -25,8 +25,8 @@
 | D1 | 설치 대상 | **전역 `~/.config/opencode/`만** | 프로젝트별 설치는 지원하지 않는다 |
 | D2 | 스택 | **Bun + TypeScript** | 컨벤션 `common.md` 준수 |
 | D3 | workflow | 이번 작업은 **사용하지 않음** (메인 직접 수행) | 세션마다 재질문 대상 |
-| D4 | 모델 배정 시점 | ~~매 작업 시작 시 질문~~ → **D13으로 대체** | 2026-09-20 고도화 결정 |
-| D5 | auto-mode 의미 | ~~권한 자동 승인만 적용~~ → **D14로 대체** | 2026-09-20 고도화 결정 |
+| D4 | 모델 배정 시점 | ~~D13의 재질문 없음~~ → **D17로 대체** | 2026-09-21 사용자 교정 |
+| D5 | auto-mode 의미 | **시작 선택 이후 권한·실행 자동화** | D14·D17 함께 적용 |
 | D6 | sub-pen 노출 | **노출** (`@` mention 가능) | hidden 처리하지 않는다 |
 | D7 | docs 위치 | `oh-pencode/docs/` | |
 | D8 | 서브에이전트 세트 | pen, sub-pen, research-pen, explore-pen, doc-pen **+ verify-pen, security-pen** (총 7) | 확장 가능하게 |
@@ -34,10 +34,11 @@
 | D10 | 설치 방식 | **installer 제작** (oh-my-openagent 스타일) | 지금 바로 전역에 설치하지 않는다 |
 | D11 | 이번 세션 (2026-09-20) | 전수조사·정합성 검사·README 재작성·install:local 수정·무결성 검증 구현 | `scripts/build-site.ts`의 `verifyIntegrity`, manifest sha256, dead export 제거 포함 |
 | D12 | 공식 사이트 디자인 | **trip 저장소의 `docs/DESIGN.md`를 디자인 계약으로 채택** | 랜딩은 Surface B(공개 페이지), docs는 Surface A(제품 콘솔). §1-2가 금지한 무단 통일을 피하려 `body.surface-a`/`body.surface-b` 스코프로 분리하고 팔레트 tier만 공유한다 |
-| D13 | 모델 배정 | **설치값을 기본으로 계속 사용하고 사용자가 명시할 때만 override** | convention 비강제, OpenCode 연결 모델 직접 지정·inherit 허용 |
-| D14 | 자율 실행 | **pen이 직접 실행·workflow를 판단하고 변경 요청은 검증·commit·일반 push까지 무중단 수행** | 새 권한·시크릿·공개 계약 결정·파괴 작업만 질문 |
+| D13 | 모델 배정 | **현재 GPT 역할 배정을 작업 시작 질문의 기본값으로 사용** | convention 비강제, OpenCode 연결 모델 직접 지정·inherit 허용 |
+| D14 | 자율 실행 | **시작 선택 이후 변경 요청은 검증·commit·일반 push까지 무중단 수행** | 새 권한·시크릿·공개 계약 결정·파괴 작업만 추가 질문 |
 | D15 | Git 권한 | **일반 add·commit·push 자동 허용, 모든 force push 금지** | subagent Git mutation 금지, pen만 통합 |
 | D16 | doc-pen | **공식 사용법이 재사용 가치가 있으면 `docs/**`에 문서화** | 기존 분류 우선, 없으면 `docs/references/`, PROCESS·acknowledge·history 제외 |
+| D17 | 작업 시작 질문 | **새 도구 작업마다 workflow와 subagent 모델 방식을 함께 질문** | 기본 GPT 배정·pen 상속·역할별 연결 모델 중 선택, 재개 경계에서 재질문 |
 
 ## 3. 전제 (실측으로 확인)
 

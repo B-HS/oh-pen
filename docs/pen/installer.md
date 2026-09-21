@@ -149,7 +149,7 @@ curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash
 6) 설치 요약을 보여주고 "이대로 설치할까요?" 최종 확인을 받는다.
 ```
 
-- 설치 시 인터뷰는 **1회**다. 선택한 모델 배정을 이후 작업의 기본값으로 사용하며 pen은 매 작업마다 다시 묻지 않는다 (architecture.md §3).
+- 설치 시 인터뷰는 초기 GPT 역할 배정을 정한다. 이후 `pen`은 새 도구 작업마다 workflow와 모델 방식을 함께 묻고, 설치 배정을 추천 기본값으로 제시한다 (architecture.md §3~4).
 - convention은 추천 기본값일 뿐 강제가 아니다. `custom`을 선택하면 OpenCode에 연결한 임의의 `provider/model#variant`를 agent별로 입력할 수 있다.
 - 사용자가 런타임에 특정 subagent 모델을 명시하면 pen이 해당 agent 파일의 `model:`을 바꾸고 다음 child session부터 사용한다. 사용할 수 없는 모델을 다른 모델로 자동 대체하지 않는다.
 - `--no-interview`면 `default_agent=pen`과 root `model`은 **기존 값이 있으면 유지**하고, 나머지는 기본값(A: convention 배정, build/plan 숨김)으로 진행한다 (src/cli.ts `noInterviewAnswers`).

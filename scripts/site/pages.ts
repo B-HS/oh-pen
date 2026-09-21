@@ -30,12 +30,12 @@ const docCard = (page: DocPage, href: string) => `<a class="doc-card" href="${hr
 
 const workflowSteps: { title: string; text: string }[] = [
     {
-        title: "Understand",
-        text: "pen classifies the request, reads the project contract, and resolves what done means.",
+        title: "Choose",
+        text: "pen asks once for workflow and subagent models before any tool-using work begins.",
     },
     {
         title: "Route",
-        text: "It works directly or delegates bounded units to the specialist best suited to each risk.",
+        text: "It follows the answer: work directly, or delegate bounded units with the selected model policy.",
     },
     {
         title: "Integrate",
@@ -102,7 +102,7 @@ export const homePage = () =>
 <section class="section" aria-labelledby="workflow-title">
   <div class="section-heading">
     <div><p class="section-kicker">Workflow</p><h2 class="section-title" id="workflow-title">From request to pushed change.</h2></div>
-    <p class="section-lead">pen owns the full delivery loop. It chooses direct execution or delegation from the shape of the task, then keeps routine integration and Git work moving without repeated approval prompts.</p>
+    <p class="section-lead">pen asks once for workflow and model choices before using tools, then owns the full delivery loop without repeated approval prompts.</p>
   </div>
   <div class="workflow-grid">
 ${workflowSteps
@@ -143,7 +143,7 @@ ${specialists
     <div>
       <span class="panel-icon">${icon("list")}</span>
       <h3>Per-role model assignment</h3>
-      <p>Choose once during installation, then let pen reuse the assignment without interrupting every task.</p>
+      <p>Installation sets the recommended GPT defaults. Every new tool-using task can keep them, inherit the primary model, or assign connected models per role.</p>
       ${checkItems([
           "Convention defaults for a ready-to-run setup",
           "Primary-model inheritance for a uniform stack",

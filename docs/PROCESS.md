@@ -1,5 +1,32 @@
 # PROCESS
 
+## 작업: workflow·모델 시작 질문 복구
+
+- [x] a. 현재 동작과 회귀 원인 확인 — D13·D14에서 시작 질문을 자동 판단으로 바꾸고 설치된 `research-pen`의 GPT 기본 모델을 즉시 사용하도록 만든 충돌 확인
+- [x] b. `pen` 시작 계약 복구 — 새 도구 작업마다 workflow와 모델 선택을 한 번에 묻고 답 전 실행을 금지
+- [x] c. 문서·사이트·회귀 계약 동기화 — 기본 GPT 배정, 직접 지정·상속, 답변 이후 자율 Git 범위를 일치시키고 회귀 검사 2건 추가
+- [x] d. 저장소·설치본 검증 — 테스트 9건·타입검사·사이트 빌드·OpenCode v2.0.10 runtime 질문 계약과 GPT 모델 해석 확인
+- [ ] e. 설치본 갱신·선별 commit·일반 push·Pages 배포 확인
+
+### 완료 기준
+
+1. 새 도구 사용 작업은 실행 전에 workflow와 subagent 모델 선택을 함께 묻는다.
+2. 기본 선택은 현재 GPT 역할 배정(Sol·Terra·Luna)을 유지한다.
+3. 사용자는 primary 상속 또는 OpenCode에 연결된 역할별 모델을 선택할 수 있다.
+4. 선택 이후 구현·검증·선별 commit·일반 push는 추가 승인 없이 완료한다.
+5. 저장소 asset, 실제 설치본, README, GitHub Pages 문서가 같은 계약을 설명한다.
+
+### 검증 결과
+
+| 검증 | 결과 |
+| --- | --- |
+| `bun run typecheck` | 통과 |
+| `bun test` | 9건 통과, 실패 0건 |
+| `bun run build:site` | 9 assets, 11 pages 생성 |
+| 실제 설치본 upgrade | 9 agent 파일 갱신, 기존 GPT 모델 배정 유지, 10개 파일 백업 |
+| `opencode debug agents` | `asksWorkflow=true`, `asksModel=true`, `blocksBeforeAnswer=true` |
+| runtime 모델 | `pen=gpt-5.6-sol#high`, `research-pen=gpt-5.6-luna#medium` |
+
 ## 작업: 스트림 설치 TTY·프롬프트 UI 수정
 
 - [x] a. 스크린샷과 실행 경로 진단 — `curl | bash`의 파이프 stdin 상속으로 방향키 escape sequence가 노출되고 좁은 터미널에서 안내 박스가 넘치는 현상 확인
@@ -65,7 +92,7 @@
 
 ### 상세
 
-1. `pen`은 매 작업 workflow·모델 질문을 제거하고 작업 성격에 따라 직접 실행 또는 위임하며, 사용자 요청 범위의 구현·검증·commit·push를 중단 없이 완료한다.
+1. 당시 `pen`의 매 작업 workflow·모델 질문을 제거했으나, 이 결정은 2026-09-21 D17에서 폐기했다. 현재는 시작 질문 이후 구현·검증·commit·push를 중단 없이 완료한다.
 2. 설치 시 `convention`·`inherit`·사용자 지정 모델을 지원하고, 런타임 모델 변경은 사용자가 명시했을 때만 수행한다.
 3. `doc-pen`은 재사용 가치가 있는 공식 사용법을 main이 지정한 `docs/**` 경로에 저장하고 다른 경로는 수정하지 않는다.
 4. 일반 Git commit·push는 `pen`에 허용하고, force push·이력 파괴·복구하기 어려운 삭제만 금지한다. subagent는 Git 통합을 하지 않는다.
