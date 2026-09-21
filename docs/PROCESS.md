@@ -6,7 +6,7 @@
 - [x] b. `pen` 시작 계약 복구 — 새 도구 작업마다 workflow와 모델 선택을 한 번에 묻고 답 전 실행을 금지
 - [x] c. 문서·사이트·회귀 계약 동기화 — 기본 GPT 배정, 직접 지정·상속, 답변 이후 자율 Git 범위를 일치시키고 회귀 검사 2건 추가
 - [x] d. 저장소·설치본 검증 — 테스트 9건·타입검사·사이트 빌드·OpenCode v2.0.10 runtime 질문 계약과 GPT 모델 해석 확인
-- [ ] e. 설치본 갱신·선별 commit·일반 push·Pages 배포 확인
+- [x] e. 설치본 갱신·선별 commit·일반 push·Pages 배포 확인 — `a807429`, Actions `35546675043`, 공개 asset·랜딩 반영 확인
 
 ### 완료 기준
 
@@ -26,6 +26,7 @@
 | 실제 설치본 upgrade | 9 agent 파일 갱신, 기존 GPT 모델 배정 유지, 10개 파일 백업 |
 | `opencode debug agents` | `asksWorkflow=true`, `asksModel=true`, `blocksBeforeAnswer=true` |
 | runtime 모델 | `pen=gpt-5.6-sol#high`, `research-pen=gpt-5.6-luna#medium` |
+| GitHub Pages | Actions `35546675043` 성공, 공개 pen asset과 랜딩의 시작 질문 계약 확인 |
 
 ## 작업: 스트림 설치 TTY·프롬프트 UI 수정
 
