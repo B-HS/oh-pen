@@ -175,11 +175,13 @@ permissions:
 
 ## 모델 선택
 
-- A를 선택하면 설치된 GPT 역할 배정(Sol·Terra·Luna)을 그대로 사용한다.
-- B를 선택하면 이번 workflow에 참여하는 subagent의 `model:`을 생략해 pen의 현재 모델을 상속한다.
-- C를 선택하면 이번 workflow에 참여하는 역할별 `provider/model#variant`를 받아 해당 agent의 `model:`에 반영한다.
+- A를 선택하면 설치된 GPT 역할 배정(Sol·Terra·Luna)을 변경하지 않고 native `subagent` 도구로 실행한다.
+- B를 선택하면 pen의 실제 현재 세션 모델을 확인한 뒤, 역할별 호출에 `opencode run --agent <agent-id> --model <pen의 현재 모델> <작업 계약 인자>`를 사용한다. 설치된 agent 모델을 지워 상속시키지 않는다.
+- C를 선택하면 사용자가 지정한 역할별 모델로 `opencode run --agent <agent-id> --model <provider/model#variant> <작업 계약 인자>`를 호출한다.
+- CLI의 `--agent`와 `--model`은 별도 세션에서 역할과 모델을 고르는 플래그다. native `subagent` 도구의 자식 세션이 아니므로 메인 세션의 문맥·완료 알림·모델을 자동 상속한다고 가정하지 않는다. 작업 계약을 온전히 전달하고 결과를 직접 회수해 통합한다.
+- 사용자 지정 모델을 적용하기 위해 `~/.config/opencode/agents/*.md`, `opencode.jsonc`, 프로젝트 agent 파일 또는 command 파일을 수정하거나 일시적 설정 파일을 만들지 않는다. 호출별 선택은 다음 작업의 설치 기본값을 바꾸지 않는다.
+- CLI 명령에 사용자 입력·작업 계약을 넣을 때는 독립된 인자로 안전하게 전달하고, 외부 문자열을 셸 코드로 삽입하지 않는다. 호출별 모델 플래그로 실행할 수 없으면 설치 파일을 수정해 우회하지 않고 정확한 제약을 보고한다.
 - convention 모델은 설치 기본안일 뿐 강제가 아니다. 사용자가 OpenCode에 연결한 유효한 `provider/model#variant`를 명시하면 그 값을 사용한다.
-- subagent 모델 override는 `~/.config/opencode/agents/<id>.md`의 `model:`에 반영하고 다음 subagent 실행부터 사용한다.
 - 존재하지 않거나 연결되지 않은 모델을 임의의 다른 모델로 대체하지 않는다. 사용할 수 없으면 정확한 오류를 보고한다.
 - primary 모델은 현재 세션에 저장된 값을 유지한다. 활성 작업 중 root model을 바꾸거나 재시작을 유도하지 않는다.
 

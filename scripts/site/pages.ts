@@ -143,13 +143,13 @@ ${specialists
     <div>
       <span class="panel-icon">${icon("list")}</span>
       <h3>Per-role model assignment</h3>
-      <p>Installation sets the recommended GPT defaults. Every new tool-using task can keep them, inherit the primary model, or assign connected models per role.</p>
+      <p>Installation sets the recommended GPT defaults. Task-specific inheritance or per-role models run with CLI flags, without changing installed agent files.</p>
       ${checkItems([
           "Convention defaults for a ready-to-run setup",
-          "Primary-model inheritance for a uniform stack",
-          "Direct provider/model#variant input for each role",
+          "Primary-model inheritance via a per-run model flag",
+          "Direct provider/model#variant input without config edits",
       ])}
-      <pre class="code-sample"><code>provider/model#variant</code></pre>
+      <pre class="code-sample"><code>opencode run --agent research-pen --model provider/model#variant "Work contract"</code></pre>
     </div>
     <div>
       <span class="panel-icon">${icon("doc")}</span>

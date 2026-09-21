@@ -33,4 +33,12 @@ describe("pen 작업 시작 계약", () => {
     expect(penAsset).not.toContain("별도 지정이 없으면 작업의 독립성·복잡도·검증 분리 필요성을 판단해 직접 수행하거나 서브에이전트를 자동 사용한다")
     expect(penAsset).not.toContain("매 작업마다 다시 묻지 않는다")
   })
+
+  test("호출별 모델 선택은 CLI 플래그를 사용하고 설치 모델을 바꾸지 않는다", () => {
+    expect(penAsset).toContain("opencode run --agent <agent-id> --model <provider/model#variant>")
+    expect(penAsset).toContain("사용자 지정 모델을 적용하기 위해 `~/.config/opencode/agents/*.md`")
+    expect(penAsset).toContain("native `subagent` 도구의 자식 세션이 아니므로")
+    expect(penAsset).not.toContain("해당 agent의 `model:`에 반영한다")
+    expect(penAsset).not.toContain("subagent 모델 override는")
+  })
 })

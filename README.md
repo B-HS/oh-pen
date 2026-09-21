@@ -110,9 +110,9 @@ The installer supports three assignment modes for every role:
 - **Primary inheritance** uses the primary session model for a selected specialist.
 - **Direct assignment** accepts any OpenCode-connected `provider/model#variant` value supplied by the user.
 
-Assignments are installation defaults, not a permanent restriction. At each new tool-using task, `pen` offers the installed GPT mix, primary-model inheritance, and direct per-role assignment. It reports an unavailable model instead of silently substituting another one.
+Assignments are installation defaults, not a permanent restriction. At each new tool-using task, `pen` offers the installed GPT mix, primary-model inheritance, and direct per-role assignment. The GPT defaults use native child agents; inheritance or direct assignment runs the selected role with `opencode run --agent <role> --model <provider/model#variant>` in a separate CLI session. `pen` supplies a complete work contract and integrates the result. It reports an unavailable model instead of silently substituting another one.
 
-Subagent models live on the `model:` line in `~/.config/opencode/agents/<id>.md`. The primary session model is controlled by the root `model` key in `~/.config/opencode/opencode.jsonc`; a `model:` field inside `agents/pen.md` does not control the primary session.
+Installation defaults live on the `model:` line in `~/.config/opencode/agents/<id>.md`. Task-specific choices do not edit those files or the root config. The primary session model is stored separately; a `model:` field inside `agents/pen.md` does not change an active primary session.
 
 Reinstall and upgrade preserve a user-edited subagent `model:` line while refreshing managed prompts and permissions. Other manual prompt edits remain untouched unless `--force` is explicitly used.
 

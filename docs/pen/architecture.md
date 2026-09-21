@@ -6,7 +6,7 @@
 ## 1. 목표
 
 1. `pen`을 단일 visible primary로 사용하고 built-in `build`·`plan`은 숨긴다.
-2. 사용자가 매 작업마다 workflow나 모델을 선택하지 않아도 요청 범위의 실행·검증·commit·push를 끝까지 수행한다.
+2. 작업 시작에 workflow와 모델을 함께 선택하고, 이후 요청 범위의 실행·검증·commit·push를 끝까지 수행한다.
 3. 역할별 subagent 모델은 설치 시 `convention`·`inherit`·사용자 지정 중에서 선택한다.
 4. convention 모델은 추천 기본값일 뿐 강제가 아니며 OpenCode에 연결된 `provider/model#variant`를 사용할 수 있다.
 5. 조사·탐색·공식 문서화·검증·보안 감사의 역할과 mutation 권한을 분리한다.
@@ -46,8 +46,11 @@
 
 - `pen`은 새 도구 사용 작업마다 workflow 사용 여부와 subagent 모델 방식을 함께 질문한다.
 - 기본 선택은 설치된 GPT 역할 배정이며, 사용자는 pen 모델 상속 또는 역할별 직접 지정을 선택할 수 있다.
-- 사용자가 특정 subagent 모델을 명시하면 `~/.config/opencode/agents/<id>.md`의 `model:`을 바꾸고 다음 child session부터 사용한다.
-- subagent tool에는 호출별 model 파라미터가 없으므로 agent 파일 변경 없이 한 번만 다른 모델을 주입할 수 없다.
+- 기본 GPT 배정은 native `subagent` 도구를 사용한다. 이 도구에는 호출별 model 파라미터가 없다.
+- 현재 pen 모델 상속 또는 역할별 직접 지정은 `opencode run --agent <agent-id> --model <provider/model#variant> <작업 계약 인자>`로 별도 실행한다. 상속 선택에서는 실제 현재 세션 모델을 확인해 `--model`에 명시한다.
+- CLI 실행은 native 자식 세션이 아니다. 부모 문맥·완료 알림·모델을 자동 상속하지 않으며 메인이 완전한 작업 계약을 전달하고 출력을 회수해 통합한다.
+- 호출별 선택으로 설치된 agent `.md`, root config, 프로젝트 agent·command 파일을 수정하지 않는다. 다음 작업의 설치 기본값은 그대로 유지한다.
+- 역할 ID는 설치된 에이전트에서 선택하고 사용자 입력은 안전한 독립 명령 인자로 전달한다. 플래그 실행이 불가능하면 설정을 바꿔 우회하지 않고 이유를 보고한다.
 - primary 모델은 session에 저장된다. agent 파일의 `model:`은 선택된 primary session 모델을 바꾸지 않는다.
 - 활성 작업 중 root model을 바꾸고 reload하거나 새 session을 요구하지 않는다. primary 변경은 installer 또는 사용자의 명시적인 설정 작업으로 처리한다.
 

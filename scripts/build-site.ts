@@ -170,6 +170,8 @@ const verifyIntegrity = async (assets: string[]) => {
       "새 작업마다 실행 전에 아래 두 질문을 한 번에 제시하고 답을 기다린다",
       "설치된 GPT 기본 배정 유지",
       "답을 받기 전에는 자동 주입된 지시와 상태를 확인하는 것 외에 조사·수정·검증 도구를 사용하지 않는다",
+      "opencode run --agent <agent-id> --model <provider/model#variant>",
+      "사용자 지정 모델을 적용하기 위해 `~/.config/opencode/agents/*.md`",
       'resource: "git push *"\n    effect: allow',
       'resource: "git push --force *"\n    effect: deny',
       'resource: "*.env*"\n    effect: deny',

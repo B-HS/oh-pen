@@ -1,5 +1,28 @@
 # PROCESS
 
+## 작업: 호출별 workflow 모델 지정과 설치 설정 보존
+
+- [x] a. OpenCode V2 공식 계약·CLI 확인 — native `subagent`에는 모델 인자가 없고 `opencode run --agent --model`은 별도 실행의 호출별 선택임을 확인
+- [x] b. 기존 agent 모델을 변경하지 않는 호출별 모델 지정 실측 — `opencode run --agent research-pen --model openai/gpt-5.6-terra#medium` 성공, 세션 export에서 역할·모델 확인, `parentID` 없음
+- [x] c. pen 자산·회귀 검사 수정 — 사용자 지정 모델은 CLI 플래그로 전달하고 설치된 `.md`/config는 변경하지 않음
+- [x] d. README·설계·합의·사이트 동기화 — native child와 CLI 별도 실행의 차이, 한계와 사용법 명시
+- [ ] e. 최소 검증·설치본 갱신·선별 커밋·일반 push·Pages 확인
+
+### 완료 기준
+
+1. A(기본 GPT)는 설치된 역할 모델을 그대로 사용한다.
+2. B(상속)·C(역할별 지정)는 설정 파일 변경 없이 호출 시 `--agent`·`--model`로 적용한다.
+3. 한 작업의 모델 선택이 후속 작업의 설치 모델을 바꾸지 않는다.
+4. CLI 별도 실행이 native subagent child와 다른 점을 명확히 설명한다.
+
+### 검증 근거
+
+- `bun test scripts/build-site.test.ts`: 5 pass, 0 fail.
+- `bun run typecheck`: 성공.
+- `bun run build:site`: 9 assets, 11 pages 생성.
+- `git diff --check`: 성공.
+- OpenCode v2.0.10에서 `research-pen`에 `--model openai/gpt-5.6-terra#medium`을 적용한 별도 세션을 확인했다. 설치본 재갱신 후에도 research agent와 root config의 SHA-256이 갱신 전과 동일하다.
+
 ## 작업: workflow·모델 시작 질문 복구
 
 - [x] a. 현재 동작과 회귀 원인 확인 — D13·D14에서 시작 질문을 자동 판단으로 바꾸고 설치된 `research-pen`의 GPT 기본 모델을 즉시 사용하도록 만든 충돌 확인
@@ -181,7 +204,7 @@
 - top-level `permissions`는 모든 agent에 병합되므로, 전역 규칙을 `agents.<id>.permissions`에만 두어 부작용을 피한다 (실측으로 확인).
 - `title`/`summary`/`compaction`은 hidden 시스템 agent이므로 설정을 건드리지 않는다.
 - XDG_CONFIG_HOME은 무시되고 `~/.config/opencode`가 고정 경로이다 (실측).
-- plugin `agent.transform`은 registry만 바꾸고 세션 실행 모델에는 반영되지 않는다 (실측). subagent 런타임 모델 변경은 agent `.md` 편집으로 한다.
+- plugin `agent.transform`은 registry만 바꾸고 세션 실행 모델에는 반영되지 않는다 (실측). 당시 native child의 지속 설정에 agent `.md` 편집을 사용했으나 작업별 모델 선택은 D18에 따라 CLI 플래그를 사용한다.
 - primary agent(pen)의 `model` 필드는 세션 모델에 반영되지 않는다 (실측). root `opencode.jsonc`의 `model`이 결정한다.
 - `question` tool은 비대화형 `opencode run`에서 세션을 중단시킨다 (실측). pen asset은 시작 질문을 텍스트로 제시하도록 작성했다.
 

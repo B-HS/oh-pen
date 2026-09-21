@@ -39,6 +39,7 @@
 | D15 | Git 권한 | **일반 add·commit·push 자동 허용, 모든 force push 금지** | subagent Git mutation 금지, pen만 통합 |
 | D16 | doc-pen | **공식 사용법이 재사용 가치가 있으면 `docs/**`에 문서화** | 기존 분류 우선, 없으면 `docs/references/`, PROCESS·acknowledge·history 제외 |
 | D17 | 작업 시작 질문 | **새 도구 작업마다 workflow와 subagent 모델 방식을 함께 질문** | 기본 GPT 배정·pen 상속·역할별 연결 모델 중 선택, 재개 경계에서 재질문 |
+| D18 | 작업별 모델 적용 | **agent `.md` 수정 금지, `opencode run --agent --model` 호출별 지정** | 기본 GPT는 native child, 상속·직접 지정은 별도 CLI 세션으로 계약·결과를 직접 통합 |
 
 ## 3. 전제 (실측으로 확인)
 
@@ -50,6 +51,7 @@
 | `default_agent` 동작 | 실측 |
 | subagent tool에 model 파라미터 없음 | `ctx.tool.list()` 스키마 확인 |
 | 런타임 모델 변경은 `.md` 편집으로 가능 | `session.hook("model.request")` 로그 |
+| `opencode run --agent --model` 호출별 모델 적용 | v2.0.10 `research-pen` 호출 및 session export에서 `gpt-5.6-terra#medium`, `parentID` 없음 |
 | plugin `agent.transform`은 실행 모델 미반영 | 실측 (부정 결과) |
 | `XDG_CONFIG_HOME` 무시 | 실측 |
 | top-level `permissions`는 전 agent에 append | 실측 |
