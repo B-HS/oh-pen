@@ -25,6 +25,13 @@
 
 임시 설치 검사에는 배포 manifest의 자산 목록과 sha256을 사용했습니다. 기존 사용자 전역 설정은 변경하지 않았으며 임시 경로는 검사 후 삭제했습니다.
 
+## 통합·배포 결과
+
+- 구현 커밋 `0b58949`, [PR #1](https://github.com/B-HS/oh-pen/pull/1), main 병합 커밋 `c639b8c`.
+- [PR 검사](https://github.com/B-HS/oh-pen/actions/runs/35700384669): frozen install·typecheck·test·build 성공.
+- [main 배포](https://github.com/B-HS/oh-pen/actions/runs/35700535774): build·deploy 성공.
+- 공개 사이트의 manifest v0.2.0, 자산 13개, 설치기 응답을 직접 조회했습니다. 모든 자산이 HTTP 200이며 공개 manifest 해시와 로컬 빌드의 해시가 일치하고 설치기 해시도 일치했습니다.
+
 ## 검증 상세
 
 - 실제 Markdown 권한 규칙에서 Git 변경·재위임·비밀 파일 접근·검사 자동 수정·audit fix를 거부하는지 검사했습니다. 설치 검증은 runtime 등록 누락, built-in hidden 불일치, 파일 변조, 모델 ID 잘림과 권한 override를 실패로 처리합니다.
