@@ -1,36 +1,23 @@
 import { createHash } from "node:crypto"
 import { mkdir, readFile, readdir, rm, stat } from "node:fs/promises"
 import { dirname, join, relative } from "node:path"
+import { z } from "zod"
+import { ModelRefSchema } from "./agent-contract.ts"
 
-export type ManagedFile = {
-  /** configRoot 기준 상대 경로. 예: `agents/pen.md` */
-  path: string
-  sha256: string
-  /** 설치 시점의 asset 해시. 사용자 수정 여부 판별에 쓴다. */
-  originSha256: string
-}
-
-export type Manifest = {
-  version: string
-  installedAt: string
-  models: Record<string, string>
-  files: ManagedFile[]
-  /**
-   * installer가 설정한 config 값. uninstall이 이 값과 일치할 때만 되돌린다.
-   * 재설치 시 변경이 없어도 이전 값을 유지한다.
-   */
-  config: {
-    defaultAgent?: string
-    rootModel?: string
-  }
-}
+export const ManifestSchema = z.object({
+  version: z.string(), installedAt: z.string(), models: z.record(z.string(), ModelRefSchema),
+  files: z.array(z.object({ path: z.string(), sha256: z.string(), originSha256: z.string() })),
+  config: z.object({ defaultAgent: z.string().optional(), rootModel: z.string().optional() }),
+})
+export type Manifest = z.infer<typeof ManifestSchema>
+export type ManagedFile = Manifest["files"][number]
 
 export const sha256 = (data: string) => createHash("sha256").update(data).digest("hex")
 
 export const readManifest = async (file: string): Promise<Manifest | undefined> => {
   try {
     const raw = await readFile(file, "utf8")
-    return JSON.parse(raw) as Manifest
+    return ManifestSchema.parse(JSON.parse(raw))
   } catch {
     return undefined
   }

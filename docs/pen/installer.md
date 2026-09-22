@@ -219,17 +219,18 @@ opencode debug agents
 installer의 `verify` 단계에서 `opencode debug agents`를 JSON으로 파싱해 단언한다.
 
 - `pen` 존재, `mode: primary`
-- `build`·`plan` 에이전트 파일 존재 (파일 존재 검사)
-- 각 `*-pen`의 `mode: subagent`, manifest에 기록된 기대 `model`
-- `default_agent`가 config source에 `pen`인지
+- 설치 대상으로 선택한 `build`·`plan`의 실제 runtime `hidden: true`
+- 각 `*-pen`의 등록·`mode: subagent`·48단계 상한·권한 경계와 manifest에 기록된 모델 또는 상속 상태
+- `default_agent`가 설치 때 선택한 값인지 (installer가 관리한 경우)
 - root `model`이 manifest에 기록된 값과 일치하는지 (manifest.config.rootModel에 기록된 경우)
+- runtime 번들을 포함한 설치 파일의 SHA-256이 manifest와 일치하는지
 
 실패하면 보고하고 종료한다. 실패 시 롤백은 **미구현**이다. 일부만 설치된 상태가 남을 수 있다.
 
 ### 알려진 한계
 
 - `opencode debug agents`는 CLI 레벨이라 plugin transform이 반영되지 않는다. installer는 plugin을 쓰지 않으므로 무관하다.
-- 실제 모델 사용 여부는 `session.hook("model.request")` 없이는 CLI로 확인할 수 없다. installer의 검증은 등록 상태까지만 보증하고, 실행 검증은 pen 또는 사용자가 한다.
+- installer의 verify는 등록 상태를 검사합니다. 실행 도구는 해당 시도의 실제 assistant 메시지에 기록된 agent·model을 별도로 확인합니다.
 
 ---
 
@@ -310,3 +311,11 @@ bun run verify            # 설치 상태 검증
 | GitHub Pages 도메인 | `https://b-hs.github.io/oh-pen` |
 | 버전 관리 | `dist/manifest.json`의 `version` = package.json의 `version` (빌드 시 고정) |
 | `*-pen` glob 허용 | pen 허용 목록에 glob을 넣지 않고 명시 목록으로 둔다 (사용자 결정, architecture.md §6) |
+
+## v0.2.0 설치 자산과 검증
+
+- review-pen을 포함한 custom agent 8종과 built-in 숨김 2종을 배포합니다.
+- `oh-pencode/runtime.js`, `task.schema.json`, `result.schema.json`을 같은 manifest와 백업·사용자 수정 보존·제거 체계로 관리합니다. 실행 도구는 Bun 번들이므로 설치 위치에 node_modules가 필요하지 않습니다.
+- 파일 존재뿐 아니라 runtime agent 등록·mode·hidden·모델(중첩 ID 포함)·권한 금지 경계와 실제 설치 파일 SHA-256을 확인합니다. 상속 모델과 선택적으로 유지한 default_agent도 설치 선택대로 검사합니다.
+- 배포 CI는 타입 검사·전체 회귀 검사·에셋 빌드를 수행합니다. PR에서는 검사만, main에서는 Pages 배포까지 진행합니다.
+- 실행·체크포인트·취소·근거 재사용은 [실행 도구 안내](runtime.md)를 참조합니다.

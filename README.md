@@ -4,7 +4,7 @@
 
 # oh-pencode
 
-### One primary agent. Six specialists. One uninterrupted delivery loop.
+### One primary agent. Seven specialists. One uninterrupted delivery loop.
 
 An autonomous agent system installer for OpenCode V2.
 
@@ -17,7 +17,7 @@ oh-pencode installs `pen` as the single primary OpenCode V2 agent and hides the 
 | At a glance | Contract |
 | --- | --- |
 | Primary agent | `pen` |
-| Specialists | `sub-pen`, `research-pen`, `explore-pen`, `doc-pen`, `verify-pen`, `security-pen` |
+| Specialists | `sub-pen`, `research-pen`, `explore-pen`, `doc-pen`, `verify-pen`, `security-pen`, `review-pen` |
 | Models | Convention defaults, primary inheritance, or any connected `provider/model#variant` |
 | Delivery | Verify → selective staging → commit → normal push |
 | Install target | Global `~/.config/opencode/` only |
@@ -97,7 +97,8 @@ The workflow stops only at a real boundary: new authority, secrets, a destructiv
 | `research-pen` | External facts, constraints, and prerequisites | Read, search, web |
 | `explore-pen` | Codebase structure, symbols, and established patterns | Read and search; no network or mutation |
 | `doc-pen` | Official usage and API contracts that should remain with the project | Read, search, web, edit under `docs/**` only |
-| `verify-pen` | Independent checks matched to the actual change risk | Read, search, shell; no source or Git mutation |
+| `verify-pen` | Independent checks matched to the actual change risk | Read, search, approved check commands; no source or Git mutation |
+| `review-pen` | Correctness, regressions, design, and project conventions | Read and search only |
 | `security-pen` | Secrets, auth, input boundaries, injection, and dependencies | Read, search, web, package-manager audit commands |
 
 Each specialist is intentionally narrower than `pen`. Subagents do not commit, push, or create nested subagents; the primary agent keeps a single integration and Git owner.
@@ -110,11 +111,25 @@ The installer supports three assignment modes for every role:
 - **Primary inheritance** uses the primary session model for a selected specialist.
 - **Direct assignment** accepts any OpenCode-connected `provider/model#variant` value supplied by the user.
 
-Assignments are installation defaults, not a permanent restriction. At each new tool-using task, `pen` offers the installed GPT mix, primary-model inheritance, and direct per-role assignment. The GPT defaults use native child agents; inheritance or direct assignment runs the selected role with `opencode run --agent <role> --model <provider/model#variant>` in a separate CLI session. `pen` supplies a complete work contract and integrates the result. It reports an unavailable model instead of silently substituting another one.
+Assignments are installation defaults, not a permanent restriction. At each new tool-using task, `pen` offers the installed GPT mix, primary-model inheritance, and direct per-role assignment. The GPT defaults use native child agents; inheritance or direct assignment uses the bundled runtime to manage `opencode run --agent <role> --model <provider/model#variant>` in a separate CLI session. `pen` supplies a validated work contract; the runtime records the session, enforces time/output/attempt limits, checks results, and supports cancellation and resume. `pen` integrates the evidence. It reports an unavailable model instead of silently substituting another one.
 
 Installation defaults live on the `model:` line in `~/.config/opencode/agents/<id>.md`. Task-specific choices do not edit those files or the root config. The primary session model is stored separately; a `model:` field inside `agents/pen.md` does not change an active primary session.
 
 Reinstall and upgrade preserve a user-edited subagent `model:` line while refreshing managed prompts and permissions. Other manual prompt edits remain untouched unless `--force` is explicitly used.
+
+## Execution and recovery
+
+Version 0.2 installs a Bun runtime and JSON schemas alongside the agents. It validates ownership and completion criteria, records checkpoints, reuses research only while its file/version/expiry evidence remains valid, and reports measured usage without guessing missing costs.
+
+```bash
+bun ~/.config/opencode/oh-pencode/runtime.js validate docs/task.json
+bun ~/.config/opencode/oh-pencode/runtime.js run docs/task.json
+bun ~/.config/opencode/oh-pencode/runtime.js status <task-id>
+bun ~/.config/opencode/oh-pencode/runtime.js cancel <task-id>
+bun ~/.config/opencode/oh-pencode/runtime.js resume docs/task.json
+```
+
+Create the contract from the [runtime guide](docs/pen/runtime.md), using actual project files and your selected model. Add `.opencode/pen-state/` to the project ignore file. Shared-checkout writes run serially; read-only tasks may run concurrently. Shell permissions and snapshot checks are not an OS sandbox.
 
 ## Autonomous Git boundary
 
@@ -165,6 +180,7 @@ The [published documentation](https://b-hs.github.io/oh-pen/docs/index.html) is 
 | Guide | Published page | Source |
 | --- | --- | --- |
 | Agent architecture | [Read](https://b-hs.github.io/oh-pen/docs/architecture.html) | [`docs/pen/architecture.md`](docs/pen/architecture.md) |
+| Runtime and recovery | [Read](https://b-hs.github.io/oh-pen/docs/runtime.html) | [`docs/pen/runtime.md`](docs/pen/runtime.md) |
 | Installer design | [Read](https://b-hs.github.io/oh-pen/docs/installer.html) | [`docs/pen/installer.md`](docs/pen/installer.md) |
 | OpenCode V2 agent contract | [Read](https://b-hs.github.io/oh-pen/docs/v2-agents.html) | [`docs/opencode/v2-agents.md`](docs/opencode/v2-agents.md) |
 | OpenCode V2 install surface | [Read](https://b-hs.github.io/oh-pen/docs/v2-install-surface.html) | [`docs/opencode/v2-install-surface.md`](docs/opencode/v2-install-surface.md) |
@@ -187,4 +203,4 @@ bun run src/cli.ts install --assets-dir ./dist/assets --dry-run --no-interview
 bun run install:local -- --dry-run --no-interview
 ```
 
-`bun run build:site` rebuilds `dist/` from scratch, bundles the installer, renders the documentation site, and records asset hashes in `dist/manifest.json`. A push to `main` runs type checking and the site build before GitHub Pages deployment.
+`bun run build:site` rebuilds `dist/` from scratch, bundles the installer, renders the documentation site, and records asset hashes in `dist/manifest.json`. A push to `main` runs type checking, tests, and the site build before GitHub Pages deployment.

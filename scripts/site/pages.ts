@@ -53,6 +53,7 @@ const specialists: { id: string; title: string; text: string }[] = [
     { id: "explore-pen", title: "Codebase", text: "Finds symbols, patterns, and dependency paths without mutation." },
     { id: "doc-pen", title: "Documentation", text: "Turns reusable official usage into project-owned docs under docs/**." },
     { id: "verify-pen", title: "Verification", text: "Runs the smallest independent check that covers the actual risk." },
+    { id: "review-pen", title: "Code review", text: "Checks correctness, regressions, and project conventions without editing." },
     { id: "security-pen", title: "Security", text: "Audits secrets, input boundaries, auth, injection, and dependencies." },
 ]
 
@@ -67,12 +68,12 @@ export const homePage = () =>
         activeHref: "index.html",
         title: "Autonomous agent delivery for OpenCode V2",
         description:
-            "Install one pen primary agent and six specialized OpenCode V2 subagents with verified assets, flexible model assignment, and autonomous delivery.",
+            "Install one pen primary agent and seven specialized OpenCode V2 subagents with verified assets, flexible model assignment, and autonomous delivery.",
         body: `<section class="hero" aria-labelledby="home-hero-title">
   <div class="hero-copy">
     <p class="eyebrow">Built for OpenCode V2</p>
     <h1 class="hero-title" id="home-hero-title">One pen.<br /><span>A complete <br class="mobile-break" />delivery system.</span></h1>
-    <p class="hero-sub">oh-pen replaces fragmented build and plan modes with one autonomous primary agent that understands, delegates, verifies, commits, and pushes — backed by six focused specialists.</p>
+    <p class="hero-sub">oh-pen replaces fragmented build and plan modes with one autonomous primary agent that understands, delegates, verifies, commits, and pushes — backed by seven focused specialists.</p>
     <div class="hero-actions">
       <a class="btn btn--primary" href="docs/index.html">Read the docs${icon("arrow-right")}</a>
       <a class="btn btn--secondary" href="https://github.com/B-HS/oh-pen" rel="noreferrer">${icon("github")}View on GitHub</a>
@@ -95,7 +96,7 @@ export const homePage = () =>
 </section>
 <div class="metric-strip" aria-label="Project overview">
   <div class="metric"><strong>1</strong><span>primary agent</span></div>
-  <div class="metric"><strong>6</strong><span>specialist agents</span></div>
+  <div class="metric"><strong>7</strong><span>specialist agents</span></div>
   <div class="metric"><strong>Any</strong><span>connected model</span></div>
   <div class="metric"><strong>SHA-256</strong><span>asset verification</span></div>
 </div>
@@ -149,7 +150,7 @@ ${specialists
           "Primary-model inheritance via a per-run model flag",
           "Direct provider/model#variant input without config edits",
       ])}
-      <pre class="code-sample"><code>opencode run --agent research-pen --model provider/model#variant "Work contract"</code></pre>
+      <pre class="code-sample"><code>bun ~/.config/opencode/oh-pencode/runtime.js run docs/task.json</code></pre>
     </div>
     <div>
       <span class="panel-icon">${icon("doc")}</span>

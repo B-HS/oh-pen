@@ -1,4 +1,5 @@
 import { sha256 } from "./fs.ts"
+import { AGENT_IDS, ModelRefSchema } from "./agent-contract.ts"
 
 export const conventionModels = {
   pen: "openai/gpt-5.6-sol#high",
@@ -8,22 +9,22 @@ export const conventionModels = {
   "doc-pen": "openai/gpt-5.6-luna#high",
   "verify-pen": "openai/gpt-5.6-luna#medium",
   "security-pen": "openai/gpt-5.6-luna#high",
-} as const
+  "review-pen": "openai/gpt-5.6-terra#high",
+} as const satisfies Record<(typeof AGENT_IDS)[number], string>
 
 export type AgentModels = Record<string, string>
 
 export type ModelMode = "convention" | "inherit" | "custom"
 
 export const isValidModelRef = (value: string) => {
-  const hashIndex = value.indexOf("#")
-  const withoutVariant = hashIndex === -1 ? value : value.slice(0, hashIndex)
-  const variant = hashIndex === -1 ? "" : value.slice(hashIndex + 1)
-  if (hashIndex !== -1 && variant.length === 0) return false
-  if (variant.includes("#")) return false
-  const slashIndex = withoutVariant.indexOf("/")
-  if (slashIndex <= 0) return false
-  if (slashIndex === withoutVariant.length - 1) return false
-  return !withoutVariant.slice(0, slashIndex).includes("/")
+  return ModelRefSchema.safeParse(value).success
+}
+
+export const parseModelRef = (value: string) => {
+  const valid = ModelRefSchema.parse(value)
+  const slash = valid.indexOf("/")
+  const [id, variant] = valid.slice(slash + 1).split("#")
+  return { providerID: valid.slice(0, slash), id, variant }
 }
 
 const frontmatterRange = (markdown: string) => {
