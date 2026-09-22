@@ -16,15 +16,16 @@
 
 | ID | mode | 역할 | 주요 권한 |
 | --- | --- | --- | --- |
-| `pen` | primary | 요구 해석, 직접 실행·위임 판단, 통합, 검증 근거 판단, Git | 프로젝트 read/edit/shell/web, 명시 subagent 6종, 일반 commit·push |
+| `pen` | primary | 요구 해석, 직접 실행·위임 판단, 통합, 검증 근거 판단, Git | 프로젝트 read/edit/shell/web, 명시 subagent 7종, 일반 commit·push |
 | `sub-pen` | subagent | 상세 계약 안의 구현·수정·검증 | 프로젝트 read/edit/shell/web, Git mutation·subagent·question 금지 |
 | `research-pen` | subagent | 여러 코드·문서 근거를 종합해 제약·대안 결정 | read/glob/grep/web/skill |
 | `explore-pen` | subagent | 코드베이스 파일·심볼·참조·부재 근거 탐색 | read/glob/grep |
 | `doc-pen` | subagent | 공식 사용법·API 계약 조사 및 재사용 문서 작성 | read/glob/grep/web/skill, `docs/**` edit |
-| `verify-pen` | subagent | 위험을 직접 덮는 독립 검증 | read/glob/grep/shell/skill, source edit·Git mutation 금지 |
+| `verify-pen` | subagent | 위험을 직접 덮는 독립 검증 | read/glob/grep/허용된 검사 shell/skill |
+| `review-pen` | subagent | 일반 동작·회귀·설계·컨벤션 검토 | read/glob/grep |
 | `security-pen` | subagent | 공격 경로·영향·신뢰도 기반 보안 감사 | read/glob/grep/web/skill, 기존 package manager audit |
 
-모든 custom agent는 시크릿 파일 읽기를 차단한다. `research-pen`·`explore-pen`·`doc-pen`·`verify-pen`·`security-pen`은 agent 규칙 시작에서 `*`를 deny하고 필요한 action만 뒤에서 allow한다. 마지막 일치 규칙이 이기는 OpenCode V2 permission 계약을 이용한다.
+모든 custom agent는 시크릿 파일 읽기를 차단한다. `research-pen`·`explore-pen`·`doc-pen`·`verify-pen`·`security-pen`·`review-pen`은 agent 규칙 시작에서 `*`를 deny하고 필요한 action만 뒤에서 allow한다. 마지막 일치 규칙이 이기는 OpenCode V2 permission 계약을 이용한다.
 
 ### build·plan 숨김
 
@@ -65,6 +66,7 @@
 | `doc-pen` | `openai/gpt-5.6-luna#high` |
 | `verify-pen` | `openai/gpt-5.6-luna#medium` |
 | `security-pen` | `openai/gpt-5.6-luna#high` |
+| `review-pen` | `openai/gpt-5.6-terra#high` |
 
 ## 4. 자율 실행
 
@@ -143,3 +145,9 @@ subagent prompt에는 다음을 실제 파일 근거로 제공한다.
 새 subagent는 `mode: subagent`, 구체적인 description, 역할에 맞는 permission, untrusted content 경계, 완료 조건, 보고 형식을 정의한다. `pen`의 subagent allow 목록은 명시 목록이므로 새 ID를 추가해야 한다. 임의의 `*-pen`을 자동 허용하지 않는다.
 
 Markdown body는 OpenCode V2에서 provider별 기본 system prompt를 대체한다. 따라서 각 custom agent는 역할·권한·완료·보고 계약을 self-contained하게 유지하고, 프로젝트별 코딩 컨벤션은 실제 `AGENTS.md`와 instructions에서 받는다.
+
+## 9. 실행 계약·상태·재사용 (v0.2.0)
+
+공통 작업/결과 스키마, 호출별 CLI 실행 관리, 취소·재개·한도·역할 선택·사용량 기록·근거 유효성 검사는 [실행 도구 안내](runtime.md)를 따릅니다. native child는 같은 결과 계약과 메인 소유 PROCESS 기록을 사용합니다. 모델 선택과 시작 질문은 기존 동작을 유지합니다.
+
+읽기 전용 역할의 셸 허용은 테스트·타입·빌드 또는 감사의 명시 목록으로 제한합니다. 자동 수정 플래그를 거부하며 이 제한을 운영체제 sandbox로 설명하지 않습니다. 설치 verify는 실제 runtime 등록·hidden·모델·권한과 설치 파일 해시를 확인하고 누락을 실패로 처리합니다.

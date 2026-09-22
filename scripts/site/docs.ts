@@ -20,13 +20,14 @@ export type DocPage = {
 }
 
 export const docPages: DocPage[] = [
+  { slug: "runtime", href: "docs/runtime.html", source: "docs/pen/runtime.md", title: "실행·취소·재개", category: "design", summary: "작업 계약, 실행 한도, 체크포인트와 조사 근거 재사용.", order: 2.5 },
   {
     slug: "architecture",
     href: "docs/architecture.html",
     source: "docs/pen/architecture.md",
     title: "에이전트 세트 설계",
     category: "design",
-    summary: "pen을 포함한 7개 에이전트의 역할, 모델 배정, 권한, 위임 계약, 확장 방법.",
+    summary: "pen을 포함한 8개 에이전트의 역할, 모델 배정, 권한, 위임 계약, 확장 방법.",
     order: 1,
   },
   {

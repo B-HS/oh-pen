@@ -1,156 +1,93 @@
-import { readConfig, readDefaultAgent, readRootModel } from "./config.ts"
-import { exists, readManifest } from "./fs.ts"
-import { agentsDir, configFile, manifestFile } from "./paths.ts"
-import { readdir } from "node:fs/promises"
-import { join } from "node:path"
+import { z } from 'zod'
+import { AGENT_IDS, AgentSchema, permissionProbes, resolvePermission, RUNTIME_ASSET } from './agent-contract.ts'
+import { readConfig, readDefaultAgent, readRootModel } from './config.ts'
+import { exists, readManifest, sha256 } from './fs.ts'
+import type { Manifest } from './fs.ts'
+import { parseModelRef } from './models.ts'
+import { configFile, configRoot, manifestFile } from './paths.ts'
+import { executeBounded } from './runtime-transport.ts'
+import { RUNTIME_LIMITS } from './runtime-contract.ts'
+import { safeFile } from './runtime-state.ts'
 
-export type VerifyCheck = {
-  name: string
-  ok: boolean
-  detail: string
-}
+type VerifyCheck = { name: string; ok: boolean; detail: string }
 
-export type VerifyResult = {
-  checks: VerifyCheck[]
-  ok: boolean
-}
-
-type AgentInfo = {
-  id: string
-  mode?: string
-  hidden?: boolean
-  model?: { providerID: string; id: string; variant?: string } | null
-}
-
-const runDebugAgents = async (directory: string): Promise<AgentInfo[]> => {
-  const proc = Bun.spawn(["opencode", "debug", "agents"], {
-    cwd: directory,
-    stdout: "pipe",
-    stderr: "pipe",
-  })
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ])
-  if (exitCode !== 0) {
-    throw new Error(`opencode debug agents 실패: ${stderr.trim() || `exit ${exitCode}`}`)
-  }
-  const parsed = JSON.parse(stdout) as AgentInfo[]
-  return Array.isArray(parsed) ? parsed : []
-}
-
-const expectedMode: Record<string, string> = {
-  pen: "primary",
-  "sub-pen": "subagent",
-  "research-pen": "subagent",
-  "explore-pen": "subagent",
-  "doc-pen": "subagent",
-  "verify-pen": "subagent",
-  "security-pen": "subagent",
-}
-
-/** 전역 agents 디렉터리에 실제로 존재하는 agent md 파일의 ID 목록. */
-const installedAgentFiles = async () => {
-  const dir = agentsDir()
-  if (!(await exists(dir))) return []
-  const entries = await readdir(dir, { withFileTypes: true })
-  return entries
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
-    .map((entry) => entry.name.replace(/\.md$/, ""))
-}
-
-const parseModelRef = (value: string) => {
-  const [providerID = "", rest = ""] = value.split("/")
-  const [id = "", variant] = rest.split("#")
-  return { providerID, id, variant }
-}
-
-export const runVerify = async (options: { directory: string }): Promise<VerifyResult> => {
-  const manifest = await readManifest(manifestFile())
-  const checks: VerifyCheck[] = []
-
-  checks.push({
-    name: "manifest",
-    ok: manifest !== undefined,
-    detail: manifest ? `version ${manifest.version}, ${manifest.files.length} files` : `${manifestFile()} 없음`,
-  })
-
-  const definedIds = new Set(await installedAgentFiles())
-  const { value: config } = await readConfig(configFile())
-
-  let agents: AgentInfo[] = []
-  try {
-    agents = await runDebugAgents(options.directory)
-    checks.push({ name: "opencode debug agents", ok: true, detail: `${agents.length} agents` })
-  } catch (error) {
-    checks.push({
-      name: "opencode debug agents",
-      ok: false,
-      detail: error instanceof Error ? error.message : String(error),
-    })
-  }
-
-  const byId = new Map(agents.map((agent) => [agent.id, agent]))
-
-  for (const [id, mode] of Object.entries(expectedMode)) {
-    checks.push({
-      name: `${id} 파일`,
-      ok: definedIds.has(id),
-      detail: definedIds.has(id) ? "정의됨" : `${join(agentsDir(), `${id}.md`)} 없음`,
-    })
-
-    const agent = byId.get(id)
-    if (!agent) continue
-
-    checks.push({
-      name: `${id} mode`,
-      ok: agent.mode === mode,
-      detail: `mode=${agent.mode ?? "(없음)"} (기대: ${mode})`,
-    })
-
-    const expectedModel = manifest?.models[id]
-    if (expectedModel) {
-      const parsed = parseModelRef(expectedModel)
-      const actual = agent.model ?? undefined
-      const match =
-        actual !== undefined &&
-        actual.providerID === parsed.providerID &&
-        actual.id === parsed.id &&
-        (parsed.variant === undefined || actual.variant === parsed.variant)
-      checks.push({
-        name: `${id} model`,
-        ok: match,
-        detail: actual
-          ? `model=${JSON.stringify(actual)} (기대: ${expectedModel})`
-          : `model 미지정 (기대: ${expectedModel})`,
-      })
+export const verifyInstallation = async (input: {
+    root: string
+    agents: z.infer<typeof AgentSchema>[]
+    manifest: Manifest
+    defaultAgent?: string
+    rootModel?: string
+}) => {
+    const checks: VerifyCheck[] = []
+    const byId = new Map(input.agents.map((agent) => [agent.id, agent]))
+    for (const id of AGENT_IDS) {
+        const agent = byId.get(id)
+        checks.push({ name: `${id} 등록`, ok: agent !== undefined, detail: agent ? 'runtime 등록됨' : 'runtime 등록 누락' })
+        const mode = id === 'pen' ? 'primary' : 'subagent'
+        checks.push({ name: `${id} mode`, ok: agent?.mode === mode, detail: `기대: ${mode}, 실제: ${agent?.mode ?? '없음'}` })
+        if (id !== 'pen') checks.push({ name: `${id} steps`, ok: agent?.steps === RUNTIME_LIMITS.maxSteps, detail: '역할 단계 상한' })
+        if (id === 'pen') checks.push({ name: 'pen visible', ok: agent !== undefined && agent.hidden !== true, detail: '메인 에이전트 가시성' })
+        const expected = input.manifest.models[id]
+        if (expected) {
+            const model = parseModelRef(expected)
+            checks.push({
+                name: `${id} model`,
+                ok:
+                    agent?.model?.providerID === model.providerID &&
+                    agent?.model?.id === model.id &&
+                    (model.variant === undefined || agent?.model?.variant === model.variant),
+                detail: `기대: ${expected}`,
+            })
+        } else if (id !== 'pen') {
+            checks.push({ name: `${id} inherit`, ok: agent !== undefined && agent.model == null, detail: '명시 모델 없는 상속 설정' })
+        }
+        for (const probe of permissionProbes(id)) {
+            checks.push({
+                name: `${id} ${probe.action} ${probe.resource}`,
+                ok: agent !== undefined && resolvePermission(agent.permissions, probe.action, probe.resource) === probe.expected,
+                detail: `기대: ${probe.expected}`,
+            })
+        }
+        checks.push({ name: `${id} manifest`, ok: input.manifest.files.some((file) => file.path === `agents/${id}.md`), detail: '설치 자산 기록' })
     }
-  }
+    for (const id of ['build', 'plan']) {
+        if (!input.manifest.files.some((file) => file.path === `agents/${id}.md`)) continue
+        checks.push({ name: `${id} hidden`, ok: byId.get(id)?.hidden === true, detail: 'runtime hidden=true 확인' })
+    }
+    for (const file of input.manifest.files) {
+        const isSafe = /^(?:agents\/[a-z0-9-]+\.md|oh-pencode\/(?:runtime\.js|task\.schema\.json|result\.schema\.json))$/.test(file.path)
+        let isMatch = false
+        if (isSafe) {
+            try {
+                const target = await safeFile(input.root, file.path)
+                isMatch = (await exists(target)) && sha256(await Bun.file(target).text()) === file.sha256
+            } catch {
+                isMatch = false
+            }
+        }
+        checks.push({ name: `${file.path} sha256`, ok: isMatch, detail: isMatch ? '설치 시점과 일치' : '누락·변경·허용되지 않는 경로' })
+    }
+    checks.push({ name: 'runtime bundle', ok: input.manifest.files.some((file) => file.path === RUNTIME_ASSET), detail: '실행 도구 설치 기록' })
+    if (input.manifest.config.defaultAgent !== undefined)
+        checks.push({ name: 'default_agent', ok: input.defaultAgent === input.manifest.config.defaultAgent, detail: '설치 시 선택과 비교' })
+    if (input.manifest.config.rootModel !== undefined)
+        checks.push({ name: 'root model', ok: input.rootModel === input.manifest.config.rootModel, detail: '설치 시 선택과 비교' })
+    return { checks, ok: checks.every((check) => check.ok) }
+}
 
-  for (const id of ["build", "plan"]) {
-    checks.push({
-      name: `${id} hidden`,
-      ok: definedIds.has(id),
-      detail: definedIds.has(id) ? "숨김 파일 정의됨" : `${id}.md 없음`,
-    })
-  }
-
-  const defaultAgent = readDefaultAgent(config)
-  checks.push({
-    name: "default_agent",
-    ok: defaultAgent === "pen",
-    detail: `default_agent=${defaultAgent ?? "(없음)"} (기대: pen)`,
-  })
-
-  if (manifest?.config.rootModel !== undefined) {
-    const rootModel = readRootModel(config)
-    checks.push({
-      name: "root model (pen 세션 모델)",
-      ok: rootModel === manifest.config.rootModel,
-      detail: `model=${rootModel ?? "(없음)"} (기대: ${manifest.config.rootModel})`,
-    })
-  }
-
-  return { checks, ok: checks.every((check) => check.ok) }
+export const runVerify = async (options: { directory: string }) => {
+    const manifest = await readManifest(manifestFile())
+    if (!manifest) return { checks: [{ name: 'manifest', ok: false, detail: '설치 manifest가 없거나 올바르지 않습니다.' }], ok: false }
+    try {
+        const debug = await executeBounded(['opencode', 'debug', 'agents'], {
+            directory: options.directory,
+            timeoutMs: RUNTIME_LIMITS.stopTimeoutMs,
+            maxOutputBytes: RUNTIME_LIMITS.maxOutputBytes,
+        })
+        const agents = z.array(AgentSchema).parse(JSON.parse(debug.stdout))
+        const { value: config } = await readConfig(configFile())
+        return verifyInstallation({ root: configRoot(), agents, manifest, defaultAgent: readDefaultAgent(config), rootModel: readRootModel(config) })
+    } catch (error) {
+        return { checks: [{ name: 'runtime', ok: false, detail: error instanceof Error ? error.message : '등록 정보 확인 실패' }], ok: false }
+    }
 }

@@ -1,10 +1,11 @@
 import { cp, mkdir, rm } from "node:fs/promises"
 import { dirname, isAbsolute, join, relative } from "node:path"
 import type { AssetSource } from "./assets.ts"
-import { applyManagedKeys, readConfig, readRootModel, writeConfig, type ConfigChange } from "./config.ts"
+import { applyManagedKeys, readConfig, writeConfig, type ConfigChange } from "./config.ts"
 import { exists, listFiles, readManifest, sha256, timestamp, writeManifest, type Manifest } from "./fs.ts"
 import { hasOnlyModelOverride, readModelLine, writeModelLine } from "./models.ts"
-import { backupDir, configFile, configRoot, manifestFile } from "./paths.ts"
+import { configRoot } from "./paths.ts"
+import { AGENT_IDS, CONTRACT_ASSET, RESULT_ASSET, RUNTIME_ASSET, parseAgentFile } from "./agent-contract.ts"
 import type { InstallAnswers } from "./interview.ts"
 
 export type InstallOptions = {
@@ -14,6 +15,7 @@ export type InstallOptions = {
   dryRun: boolean
   force: boolean
   skipBackup: boolean
+  root?: string
 }
 
 export type InstallResult = {
@@ -66,27 +68,38 @@ const configRewriteWarning = (backupRoot: string) =>
   `opencode.jsonc의 주석과 trailing comma가 재작성 과정에서 사라질 수 있습니다 (백업: ${backupRoot})`
 
 export const install = async (options: InstallOptions): Promise<InstallResult> => {
-  const root = configRoot()
+  const root = options.root ?? configRoot()
+  const manifestPath = join(root, "oh-pencode", "manifest.json")
+  const configurationPath = join(root, "opencode.jsonc")
+  const backupsPath = join(root, "oh-pencode", "backup")
   const result: InstallResult = { wrote: [], skipped: [], preserved: [], warnings: [], backups: [], configChanges: [] }
 
   const assetPaths = await options.assets.list()
-  const agentAssets = assetPaths.filter((path) => path.startsWith("agents/") && path.endsWith(".md"))
+  const allowed = new Set([...AGENT_IDS.map((id) => `agents/${id}.md`), "agents/builtin/build.md", "agents/builtin/plan.md", RUNTIME_ASSET, CONTRACT_ASSET, RESULT_ASSET])
+  if (assetPaths.some((path) => !allowed.has(path))) throw new Error("지원하지 않는 설치 에셋 경로가 있습니다.")
+  const agentAssets = assetPaths.filter((path) => path.startsWith("agents/"))
+  const managedAssets = assetPaths
+  const contents = new Map(await Promise.all(managedAssets.map(async (path) => {
+    const content = await options.assets.read(path)
+    if (path.startsWith("agents/")) parseAgentFile(content)
+    return [path, content] as const
+  })))
   if (agentAssets.length === 0) {
     throw new Error("에셋에 agent 정의가 없습니다. manifest를 확인하세요.")
   }
 
-  const previous = await readManifest(manifestFile())
-  const backupRoot = join(backupDir(), timestamp())
-  const { value: currentConfig } = await readConfig(configFile())
+  const previous = await readManifest(manifestPath)
+  const backupRoot = join(backupsPath, timestamp())
+  const { value: currentConfig } = await readConfig(configurationPath)
 
   if (options.dryRun) {
-    for (const assetPath of agentAssets) {
+    for (const assetPath of managedAssets) {
       if (isBuiltinAsset(assetPath) && !options.answers.hideBuiltins) continue
       result.wrote.push(`${targetPathFor(root, assetPath)} (dry-run)`)
     }
-    if (options.answers.adoptDefaultAgent) result.wrote.push(`${configFile()} default_agent=pen (dry-run)`)
+    if (options.answers.adoptDefaultAgent) result.wrote.push(`${configurationPath} default_agent=pen (dry-run)`)
     if (options.answers.rootModel) {
-      result.wrote.push(`${configFile()} model=${options.answers.rootModel} (dry-run)`)
+      result.wrote.push(`${configurationPath} model=${options.answers.rootModel} (dry-run)`)
     }
     for (const [agent, model] of Object.entries(options.answers.models)) {
       result.wrote.push(`agents/${agent}.md ← model: ${model} (dry-run)`)
@@ -95,7 +108,7 @@ export const install = async (options: InstallOptions): Promise<InstallResult> =
   }
 
   if (!options.skipBackup) {
-    const backupTargets = [configFile(), ...agentAssets.map((path) => targetPathFor(root, path))]
+    const backupTargets = [configurationPath, ...managedAssets.map((path) => targetPathFor(root, path))]
     for (const target of backupTargets) {
       if (await backupFile(target, backupRoot, root)) result.backups.push(target)
     }
@@ -103,7 +116,7 @@ export const install = async (options: InstallOptions): Promise<InstallResult> =
 
   const files: Manifest["files"] = []
 
-  for (const assetPath of agentAssets) {
+  for (const assetPath of managedAssets) {
     if (isBuiltinAsset(assetPath) && !options.answers.hideBuiltins) {
       result.skipped.push(assetPath)
       continue
@@ -111,15 +124,18 @@ export const install = async (options: InstallOptions): Promise<InstallResult> =
 
     const agentId = agentIdFor(assetPath)
     const target = targetPathFor(root, assetPath)
-    const assetContent = await options.assets.read(assetPath)
-    const previousEntry = previous?.files.find((file) => file.path === `agents/${agentId}.md`)
+    const assetContent = contents.get(assetPath)
+    if (assetContent === undefined) throw new Error("에셋 내용을 찾을 수 없습니다.")
+    const installedPath = relative(root, target)
+    const isAgent = assetPath.startsWith("agents/")
+    const previousEntry = previous?.files.find((file) => file.path === installedPath)
     let shouldPreserveModel = false
     let preservedModel: string | undefined
 
     if (previousEntry && (await exists(target))) {
       const onDisk = await Bun.file(target).text()
       const userModified = sha256(onDisk) !== previousEntry.sha256
-      const isOnlyModelOverride = hasOnlyModelOverride(onDisk, previousEntry.originSha256)
+      const isOnlyModelOverride = isAgent && hasOnlyModelOverride(onDisk, previousEntry.originSha256)
       if (userModified && isOnlyModelOverride && !options.force) {
         shouldPreserveModel = true
         preservedModel = readModelLine(onDisk)
@@ -129,23 +145,23 @@ export const install = async (options: InstallOptions): Promise<InstallResult> =
       if (userModified && !isOnlyModelOverride && !options.force) {
         result.preserved.push(target)
         result.warnings.push(`${target} 는 설치 후 수정되었습니다. 사용자 변경을 보존합니다.`)
-        files.push({ path: `agents/${agentId}.md`, sha256: sha256(onDisk), originSha256: previousEntry.originSha256 })
+        files.push({ path: installedPath, sha256: sha256(onDisk), originSha256: previousEntry.originSha256 })
         continue
       }
     }
 
     const model = shouldPreserveModel ? preservedModel : options.answers.models[agentId]
-    const content = model ? writeModelLine(assetContent, model) : assetContent
+    const content = isAgent && model ? writeModelLine(assetContent, model) : assetContent
     await mkdir(dirname(target), { recursive: true })
     await Bun.write(target, content)
-    files.push({ path: `agents/${agentId}.md`, sha256: sha256(content), originSha256: sha256(assetContent) })
+    files.push({ path: installedPath, sha256: sha256(content), originSha256: sha256(assetContent) })
     result.wrote.push(target)
   }
 
   const installedModels = Object.fromEntries(
     (
       await Promise.all(
-        files.map(async (file) => {
+        files.filter((file) => file.path.startsWith("agents/")).map(async (file) => {
           const installedContent = await Bun.file(join(root, file.path)).text()
           const installedModel = readModelLine(installedContent)
           const agentId = file.path.split("/").at(-1)?.replace(/\.md$/, "") ?? ""
@@ -162,8 +178,8 @@ export const install = async (options: InstallOptions): Promise<InstallResult> =
     rootModel: desiredRootModel,
   })
   if (changes.length > 0) {
-    await writeConfig(configFile(), nextConfig)
-    result.wrote.push(configFile())
+    await writeConfig(configurationPath, nextConfig)
+    result.wrote.push(configurationPath)
     result.configChanges.push(...changes)
     result.warnings.push(configRewriteWarning(backupRoot))
   }
@@ -180,7 +196,7 @@ export const install = async (options: InstallOptions): Promise<InstallResult> =
       ...(desiredRootModel ? { rootModel: desiredRootModel } : {}),
     },
   }
-  await writeManifest(manifestFile(), manifest)
+  await writeManifest(manifestPath, manifest)
 
   if (await exists(backupRoot)) {
     const backups = await listFiles(backupRoot)
