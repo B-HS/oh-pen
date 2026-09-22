@@ -28,3 +28,10 @@ README, `docs/pen/installer.md`, `scripts/site/{docs,pages,shell,theme}.ts`, `sc
 | 실제 브라우저 이동 | 설계 본문 → 실행 안내 성공, 중첩 404의 홈·스타일 경로 정상 |
 
 로컬 미리보기에서 실제 브라우저로 확인했습니다. 외부 모델 호출과 사용자 전역 설치 변경은 이번 문서·사이트 작업에 포함하지 않았습니다.
+
+## 병합·배포
+
+- 구현 커밋 `b2093e6`, [PR #2](https://github.com/B-HS/oh-pen/pull/2), main 병합 `fc889aa`.
+- [PR CI](https://github.com/B-HS/oh-pen/actions/runs/35701964177): 전체 51 pass, 0 fail, 타입 검사·13 assets/11 pages 빌드 성공.
+- [main 배포](https://github.com/B-HS/oh-pen/actions/runs/35702097943): 성공.
+- 공개 홈페이지의 v0.2 안내를 확인하고, 공개 설계 문서의 실행 안내를 실제로 클릭해 `/docs/runtime.html` 진입을 확인했습니다.
