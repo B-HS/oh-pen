@@ -131,7 +131,7 @@ const buildDocsPages = async () => {
   await Bun.write(join(dist, "docs", "index.html"), docsIndexPage())
   await Bun.write(join(dist, "404.html"), notFoundPage())
 
-  const written: string[] = ["site.css", "index.html", "docs/index.html", "404.html"]
+  const written: string[] = ["index.html", "docs/index.html", "404.html"]
   for (const [index, doc] of sorted.entries()) {
     const rendered = await renderDoc(doc)
     const prev = sorted[index - 1]

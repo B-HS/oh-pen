@@ -75,7 +75,7 @@ export const homePage = () =>
     <h1 class="hero-title" id="home-hero-title">One pen.<br /><span>A complete <br class="mobile-break" />delivery system.</span></h1>
     <p class="hero-sub">oh-pen replaces fragmented build and plan modes with one autonomous primary agent that understands, delegates, verifies, commits, and pushes — backed by seven focused specialists.</p>
     <div class="hero-actions">
-      <a class="btn btn--primary" href="docs/index.html">Read the docs${icon("arrow-right")}</a>
+      <a class="btn btn--primary" href="docs/installer.html">Installation guide${icon("arrow-right")}</a>
       <a class="btn btn--secondary" href="https://github.com/B-HS/oh-pen" rel="noreferrer">${icon("github")}View on GitHub</a>
     </div>
     <p class="hero-note">${icon("shield")}Verified assets · Backups before writes · No force push</p>
@@ -100,6 +100,19 @@ export const homePage = () =>
   <div class="metric"><strong>Any</strong><span>connected model</span></div>
   <div class="metric"><strong>SHA-256</strong><span>asset verification</span></div>
 </div>
+<section class="section" aria-labelledby="runtime-title">
+  <div class="section-heading">
+    <div><p class="section-kicker">Available in v0.2</p><h2 class="section-title" id="runtime-title">Keep delegated work accountable.</h2></div>
+    <p class="section-lead">The bundled runtime manages task-specific model sessions. Native child agents keep the same work contract, with results checked by pen.</p>
+  </div>
+  <div class="workflow-grid">
+    <article class="workflow-card"><span class="workflow-index">01</span><h3>Define the task</h3><p>Record ownership, context, the chosen model, completion criteria, and required checks before work begins.</p></article>
+    <article class="workflow-card"><span class="workflow-index">02</span><h3>Bound the run</h3><p>Use explicit time, step, output, and attempt limits. Shared-checkout writes run one at a time.</p></article>
+    <article class="workflow-card"><span class="workflow-index">03</span><h3>Resume with evidence</h3><p>Cancel a session or resume its checkpoint only after the contract and project state are checked.</p></article>
+    <article class="workflow-card"><span class="workflow-index">04</span><h3>Review the result</h3><p>Check structured results, reuse valid research, and inspect observed usage without guessing missing costs.</p></article>
+  </div>
+  <div class="hero-actions"><a class="btn btn--secondary" href="docs/runtime.html">Create a task contract${icon("arrow-right")}</a><a class="btn btn--secondary" href="docs/architecture.html">Explore all eight agents${icon("arrow-right")}</a></div>
+</section>
 <section class="section" aria-labelledby="workflow-title">
   <div class="section-heading">
     <div><p class="section-kicker">Workflow</p><h2 class="section-title" id="workflow-title">From request to pushed change.</h2></div>
@@ -151,6 +164,7 @@ ${specialists
           "Direct provider/model#variant input without config edits",
       ])}
       <pre class="code-sample"><code>bun ~/.config/opencode/oh-pencode/runtime.js run docs/task.json</code></pre>
+      <p>Start with the <a href="docs/runtime.html">task contract example</a> and use the model you selected for this task.</p>
     </div>
     <div>
       <span class="panel-icon">${icon("doc")}</span>
@@ -251,6 +265,7 @@ export const notFoundPage = () =>
         lang: "en",
         surface: "surface-b",
         activeHref: "404.html",
+        baseHref: "/oh-pen/",
         title: "Page not found",
         description: "The requested oh-pen page does not exist.",
         body: `<section class="state-card" aria-labelledby="notfound-title"><div>

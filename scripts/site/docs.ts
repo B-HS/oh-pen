@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises"
-import { join } from "node:path"
+import { join, posix } from "node:path"
 
 export type DocSection = {
   level: 2 | 3
@@ -20,7 +20,6 @@ export type DocPage = {
 }
 
 export const docPages: DocPage[] = [
-  { slug: "runtime", href: "docs/runtime.html", source: "docs/pen/runtime.md", title: "실행·취소·재개", category: "design", summary: "작업 계약, 실행 한도, 체크포인트와 조사 근거 재사용.", order: 2.5 },
   {
     slug: "architecture",
     href: "docs/architecture.html",
@@ -38,6 +37,15 @@ export const docPages: DocPage[] = [
     category: "design",
     summary: "GitHub Pages 배포, CLI 명령과 플래그, 설치 파일 조작, 무결성 검증, 안전 규칙.",
     order: 2,
+  },
+  {
+    slug: "runtime",
+    href: "docs/runtime.html",
+    source: "docs/pen/runtime.md",
+    title: "실행·취소·재개",
+    category: "design",
+    summary: "작업 계약 작성부터 실행 한도, 중단 후 재개, 조사 근거 재사용까지.",
+    order: 2.5,
   },
   {
     slug: "v2-agents",
@@ -63,7 +71,7 @@ export const docPages: DocPage[] = [
     source: "docs/acknowledge/decisions.md",
     title: "결정과 합의",
     category: "project",
-    summary: "사용자 결정 D1~D16, 해소된 미해결 항목, 실측 전제 기록.",
+    summary: "workflow·모델 선택 등 사용자 결정, 해소된 미해결 항목과 실측 전제.",
     order: 5,
   },
   {
@@ -111,7 +119,13 @@ export const renderDoc = async (doc: DocPage): Promise<RenderedDoc> => {
   const sections: DocSection[] = []
   let headingCount = 0
   const body = wrapTables(
-    Bun.markdown.html(stripLeadingTitle(raw)).replace(
+    Bun.markdown.html(stripLeadingTitle(raw)).replace(/href="([^"#?]+\.md)([^"]*)"/g, (match: string, href: string, suffix: string) => {
+      if (/^(?:[a-z][a-z\d+.-]*:|\/)/i.test(href)) return match
+      const source = posix.normalize(posix.join(posix.dirname(doc.source), href))
+      const destination = docPages.find((page) => page.source === source)
+      if (!destination) return match
+      return `href="${posix.relative(posix.dirname(doc.href), destination.href)}${suffix}"`
+    }).replace(
       /<h([23])>([\s\S]*?)<\/h\1>/g,
       (_match: string, level: string, inner: string) => {
         headingCount += 1
