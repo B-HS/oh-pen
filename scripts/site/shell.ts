@@ -8,6 +8,7 @@ export type LayoutOptions = {
     lang: "en" | "ko"
     surface: "surface-b" | "surface-a"
     body: string
+    baseHref?: string
     toc?: DocSection[]
     meta?: { label: string; value: string }[]
     breadcrumb?: { label: string; href: string }[]
@@ -162,6 +163,7 @@ const landingLayout = (options: LayoutOptions) => `<!doctype html>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    ${options.baseHref ? `<base href="${esc(options.baseHref)}" />` : ""}
     <title>${esc(options.title)}${SITE_TITLE_SUFFIX}</title>
     <meta name="description" content="${esc(options.description)}" />
     ${prePaintScript}

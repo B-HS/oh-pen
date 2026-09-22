@@ -8,7 +8,7 @@
 
 An autonomous agent system installer for OpenCode V2.
 
-[Install](#install) · [How it works](#how-it-works) · [Agents](#agent-system) · [Models](#model-assignment) · [Documentation](https://b-hs.github.io/oh-pen/docs/index.html)
+[Install](#install) · [Agents](#agent-system) · [Models](#model-assignment) · [Execution and recovery](#execution-and-recovery) · [Documentation](https://b-hs.github.io/oh-pen/docs/index.html)
 
 </div>
 
@@ -22,6 +22,15 @@ oh-pencode installs `pen` as the single primary OpenCode V2 agent and hides the 
 | Delivery | Verify → selective staging → commit → normal push |
 | Install target | Global `~/.config/opencode/` only |
 | Integrity | SHA-256 verification before installer execution |
+
+## What's included in v0.2
+
+- **Eight agents with clear roles:** one primary, seven specialists, and a new read-only `review-pen` for correctness and regressions.
+- **Validated delegation:** explicit file ownership, completion criteria, required checks, and a shared DONE/PARTIAL/BLOCKED result format.
+- **Managed CLI sessions:** time and output limits, cancellation, checkpoints, and resume without changing installed model settings.
+- **Reusable evidence:** research tied to source versions, file hashes, and expiry, with observed usage and completion metrics.
+
+The runtime manages separate CLI sessions. Native child agents follow the same work and result contracts, with state recorded and checked by `pen`. See the [runtime guide](https://b-hs.github.io/oh-pen/docs/runtime.html) for a complete task example and operational limits.
 
 ## Install
 
@@ -45,6 +54,8 @@ Use convention model defaults without the interview:
 curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- --no-interview
 ```
 
+After installation, run `verify` below, open OpenCode in your project, and select `pen` if it is not already the default. Give it your task and answer the workflow/model choices. Existing non-empty default-agent and root-model settings are preserved in non-interactive mode.
+
 ### Lifecycle commands
 
 | Command | Purpose |
@@ -52,13 +63,15 @@ curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- --no-interview
 | `install` | Install the agent set and create a backup before managed writes |
 | `verify` | Compare the installed files and OpenCode runtime interpretation with the manifest |
 | `upgrade` | Refresh managed assets while preserving supported user changes |
-| `uninstall` | Remove managed files and restore the previous configuration |
+| `uninstall` | Remove unchanged managed files and matching managed config keys; retain user edits and backups |
 
 ```bash
 curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- verify
 curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- upgrade
 curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- uninstall
 ```
+
+Uninstall does not restore an entire earlier configuration from backup. Before an upgrade, review any preserved-file warnings: a manually edited prompt or runtime stays unchanged unless you explicitly use `--force`.
 
 ## How it works
 
@@ -96,7 +109,7 @@ The workflow stops only at a real boundary: new authority, secrets, a destructiv
 | `sub-pen` | Implementation inside a detailed work contract | Project tools; Git mutation and nested delegation denied |
 | `research-pen` | External facts, constraints, and prerequisites | Read, search, web |
 | `explore-pen` | Codebase structure, symbols, and established patterns | Read and search; no network or mutation |
-| `doc-pen` | Official usage and API contracts that should remain with the project | Read, search, web, edit under `docs/**` only |
+| `doc-pen` | Official usage and API contracts that should remain with the project | Read, search, web, edit under `docs/**` except state, decisions, and history |
 | `verify-pen` | Independent checks matched to the actual change risk | Read, search, approved check commands; no source or Git mutation |
 | `review-pen` | Correctness, regressions, design, and project conventions | Read and search only |
 | `security-pen` | Secrets, auth, input boundaries, injection, and dependencies | Read, search, web, package-manager audit commands |
@@ -119,17 +132,23 @@ Reinstall and upgrade preserve a user-edited subagent `model:` line while refres
 
 ## Execution and recovery
 
-Version 0.2 installs a Bun runtime and JSON schemas alongside the agents. It validates ownership and completion criteria, records checkpoints, reuses research only while its file/version/expiry evidence remains valid, and reports measured usage without guessing missing costs.
+Version 0.2 installs a Bun runtime and JSON schemas alongside the agents. Prepare `docs/task.json` from the [task contract example](docs/pen/runtime.md), using real project paths, acceptance criteria, and your selected model. Run these commands from that project's Git root.
 
 ```bash
 bun ~/.config/opencode/oh-pencode/runtime.js validate docs/task.json
 bun ~/.config/opencode/oh-pencode/runtime.js run docs/task.json
 bun ~/.config/opencode/oh-pencode/runtime.js status <task-id>
 bun ~/.config/opencode/oh-pencode/runtime.js cancel <task-id>
+bun ~/.config/opencode/oh-pencode/runtime.js recover <task-id>
 bun ~/.config/opencode/oh-pencode/runtime.js resume docs/task.json
+bun ~/.config/opencode/oh-pencode/runtime.js metrics
 ```
 
-Create the contract from the [runtime guide](docs/pen/runtime.md), using actual project files and your selected model. Add `.opencode/pen-state/` to the project ignore file. Shared-checkout writes run serially; read-only tasks may run concurrently. Shell permissions and snapshot checks are not an OS sandbox.
+Use `recover` only after the runner has stopped; it interrupts the server session before releasing the task lock. Resume requires the same contract and matching project state. A completed unchanged task returns its recorded result without calling the model again.
+
+Defaults are 10 minutes, at most 2 attempts, and at most 2 read-only tasks at once. Each specialist has a 48-step ceiling; shared-checkout writes run serially. Add `.opencode/pen-state/` to the project's `.gitignore`. Missing token/cost data stays unknown. Shell permissions and snapshots are not an OS sandbox, and `pen` still checks the actual diff and reported evidence.
+
+Automated tests cover contracts, permissions, installation, failure, cancellation, and resume. They do not make paid external-model calls; validate model connectivity in your own OpenCode environment.
 
 ## Autonomous Git boundary
 
@@ -167,8 +186,8 @@ One-off facts and material already covered by an existing page are returned to `
 
 - Downloads the bundle, manifest, and listed assets before execution, then verifies every SHA-256 digest.
 - Writes only under `~/.config/opencode/`; there is no per-project install mode.
-- Backs up `opencode.jsonc` and every managed agent file before writing.
-- Preserves managed agent files edited after installation and reports the conflict.
+- Backs up `opencode.jsonc` and existing managed agents, runtime, and schema files before writing.
+- Preserves managed files edited after installation and reports the conflict.
 - Rejects absolute asset paths and paths containing `..`.
 - Accepts only HTTPS or local development paths as asset sources.
 - Does not use `sudo` or read secrets, tokens, keys, or `.env` files.

@@ -22,8 +22,8 @@ curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash
 1. OpenCode 설치 여부 확인 (`opencode --version`).
 2. Bun 설치 여부 확인. 없으면 안내하고 중단 (임의 설치 금지).
 3. GitHub Pages에서 installer 번들(`oh-pencode.ts`)과 `manifest.json`을 임시 디렉터리로 내려받는다.
-4. manifest의 `sha256` 맵으로 번들·에셋 해시를 검증한다. 불일치하면 `exit 1`로 중단한다.
-5. `manifest.json`의 asset 목록을 임시 디렉터리로 내려받는다.
+4. `manifest.json`의 asset 목록을 임시 디렉터리로 내려받는다.
+5. manifest의 `sha256` 맵으로 번들·에셋 해시를 검증한다. 불일치하면 `exit 1`로 중단한다.
 6. `bun run <tmp>/oh-pencode.ts <command> --assets-dir <tmp>/assets "$@"` 실행.
 7. 임시 디렉터리 정리.
 
@@ -31,32 +31,22 @@ curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash
 
 GitHub Pages는 파일만 서빙한다. 다음을 정적으로 배포한다.
 
-```text
-dist/
-├── index.html              사람이 보는 안내 페이지
-├── install.sh              curl 부트스트랩
-├── manifest.json           버전·asset 목록
-├── oh-pencode.ts           installer 본체 (단일 번들)
-└── assets/
-    └── agents/
-        ├── pen.md
-        ├── sub-pen.md
-        ├── research-pen.md
-        ├── explore-pen.md
-        ├── doc-pen.md
-        ├── verify-pen.md
-        ├── security-pen.md
-        └── builtin/
-            ├── build.md    (hidden)
-            └── plan.md     (hidden)
-```
+| `dist/` 아래 경로 | 내용 |
+| --- | --- |
+| `index.html`, `docs/**/*.html`, `site.css` | 홈페이지와 사용·설계 문서 |
+| `install.sh`, `oh-pencode.ts` | curl 부트스트랩과 단일 installer 번들 |
+| `manifest.json` | 버전·13개 asset 목록·SHA-256 |
+| `assets/agents/*.md` | pen·sub·research·explore·doc·verify·security·review 8종 |
+| `assets/agents/builtin/{build,plan}.md` | built-in 숨김 2종 |
+| `assets/oh-pencode/runtime.js` | 실행·취소·재개 도구 |
+| `assets/oh-pencode/{task,result}.schema.json` | 작업과 결과 계약 2종 |
 
 ### manifest.json
 
 ```jsonc
 {
-  "version": "0.1.0",
-  "releasedAt": "2026-09-20T10:28:22.026Z",
+  "version": "0.2.0",
+  "releasedAt": "<빌드 시각 UTC ISO 8601>",
   "assets": [
     "agents/builtin/build.md",
     "agents/builtin/plan.md",
@@ -64,9 +54,13 @@ dist/
     "agents/explore-pen.md",
     "agents/pen.md",
     "agents/research-pen.md",
+    "agents/review-pen.md",
     "agents/security-pen.md",
     "agents/sub-pen.md",
     "agents/verify-pen.md",
+    "oh-pencode/result.schema.json",
+    "oh-pencode/runtime.js",
+    "oh-pencode/task.schema.json",
   ],
   "sha256": {
     "oh-pencode.ts": "<installer 번들 해시>",
@@ -76,7 +70,7 @@ dist/
 }
 ```
 
-- `assets`는 에셋 경로 문자열 목록이고(`agents/...`), `sha256`은 `oh-pencode.ts` 번들과 각 에셋의 해시 맵이다 (`scripts/build-site.ts`의 `buildManifest`). `oh-pencode.ts`는 `assets`에 없고 `sha256` 맵에만 있다.
+- `assets`는 `agents/...`와 `oh-pencode/...`의 경로 문자열 목록이고, `sha256`은 `oh-pencode.ts` 번들과 각 에셋의 해시 맵이다 (`scripts/build-site.ts`의 `buildManifest`). `oh-pencode.ts`는 `assets`에 없고 `sha256` 맵에만 있다. 위 해시는 구조 예시이며 실제 manifest에는 모든 자산의 해시가 포함된다.
 - `install.sh`가 다운로드한 파일을 이 맵과 비교해 검증하고, 불일치하면 `exit 1`로 중단한다.
 - CLI도 http base-url일 때 manifest의 sha256 맵으로 asset을 검증한다.
 
@@ -134,6 +128,7 @@ curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash
    doc-pen          : openai/gpt-5.6-luna#high
    verify-pen       : openai/gpt-5.6-luna#medium
    security-pen     : openai/gpt-5.6-luna#high
+   review-pen       : openai/gpt-5.6-terra#high
 
 3) build/plan 에이전트를 숨길까요?
    A. 숨김 (pen 단독 사용)  [기본]
@@ -168,10 +163,14 @@ curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash
 ~/.config/opencode/agents/doc-pen.md
 ~/.config/opencode/agents/verify-pen.md
 ~/.config/opencode/agents/security-pen.md
+~/.config/opencode/agents/review-pen.md
 ~/.config/opencode/agents/build.md      (hidden)
 ~/.config/opencode/agents/plan.md       (hidden)
 ~/.config/opencode/opencode.jsonc       (default_agent, model 키만)
 ~/.config/opencode/oh-pencode/manifest.json
+~/.config/opencode/oh-pencode/runtime.js
+~/.config/opencode/oh-pencode/task.schema.json
+~/.config/opencode/oh-pencode/result.schema.json
 ```
 
 ### opencode.jsonc 병합 규칙
@@ -186,7 +185,7 @@ curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash
 
 ### 멱등성
 
-- `agents/*.md`는 installer 관리 파일이다. 재실행 시 재생성한다.
+- `agents/*.md`, 실행 도구, 계약 스키마는 installer 관리 파일이다. 재실행 시 사용자 변경 여부를 확인한 뒤 갱신한다.
 - **사용자가 수정한 흔적이 있으면** (해시 불일치) 확인 질문 없이 자동 보존하고, 보존 사실을 경고로 출력한다 (src/install.ts: 기존 sha256과 디스크 해시 비교 → `preserved` + `warnings`).
 - 변경이 `model:` 줄뿐이면 사용자 지정 모델을 보존하면서 새 asset 본문과 permission을 갱신한다. model 줄을 제거해 이전 `originSha256`과 비교하므로 다른 본문 변경과 구분한다.
 - 갱신 뒤 manifest의 `models`는 설치 답변이 아니라 실제 설치 파일의 `model:` 값을 다시 읽어 기록하므로 verify 기대값과 일치한다.
@@ -272,10 +271,10 @@ oh-pencode/
 bun run build:site
 ```
 
-1. `src/**`를 `dist/oh-pencode.ts`로 번들한다 (`bun build --target=bun`).
-2. `assets/**`를 `dist/assets/**`로 복사한다.
-3. `oh-pencode.ts`와 각 asset의 sha256을 계산해 `dist/manifest.json`에 기록한다 (`version`은 package.json의 `version`).
-4. `install.sh`와 `index.html`을 만들고, 에셋 무결성(frontmatter·mode·hidden·빈 파일)을 검증한다.
+1. `assets/**`를 복사하고 installer와 runtime을 각각 Bun 단일 번들로 만든다.
+2. Zod 작업·결과 계약을 JSON Schema로 내보내 runtime과 함께 배치한다.
+3. `install.sh`, 홈페이지와 문서 페이지를 생성한다.
+4. installer와 13개 자산의 sha256을 manifest에 기록하고 역할 권한·공통 계약·빈 파일 검사를 수행한다.
 
 GitHub Actions로 `main` push 시 `dist/`를 GitHub Pages에 배포한다.
 

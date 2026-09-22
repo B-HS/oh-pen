@@ -1309,6 +1309,7 @@ summary:focus-visible {
     border-radius: 5px;
     background: var(--surface-subtle);
     font: 0.84em var(--font-mono);
+    overflow-wrap: anywhere;
 }
 
 .prose pre {
@@ -1327,6 +1328,7 @@ summary:focus-visible {
     color: inherit;
     font-size: 12px;
     white-space: pre;
+    overflow-wrap: normal;
 }
 
 .prose blockquote {
