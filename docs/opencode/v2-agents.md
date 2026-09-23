@@ -138,22 +138,24 @@ Review the current changes. List findings in severity order with file and line r
 
 ### subagent tool 자체에는 model 파라미터가 없다
 
-`subagent` tool 입력은 **agent ID, description, prompt (그리고 `background`)** 뿐이다. 따라서 native child 세션에서 호출별 모델을 지정할 수 없다. native child는 agent 정의의 `model`을 사용하고, 없으면 부모 모델을 상속한다.
+`subagent` tool 입력은 **agent ID, description, prompt**, 선택적 `background`와 재개용 `sessionID`뿐이다. 직접적인 model 파라미터는 없다. native child는 처음 생성될 때 agent 정의의 `model`을 사용하고, 없으면 부모 모델을 상속한다.
 
-설치 모델을 바꾸지 않는 호출별 선택은 별도 CLI 세션으로 실행한다:
+v0.3은 이 제약을 OpenCode V2 plugin의 지원 API로 처리한다.
 
-```bash
-opencode run --agent research-pen --model openai/gpt-5.6-terra#medium "완전한 조사 계약"
-```
+- `pen_subagent`가 현재 parent session에 다음 native 호출의 검증된 계약을 예약한다.
+- native `subagent`가 실제 child session을 만들기 때문에 `parentID`와 built-in subagent UI가 유지된다.
+- child prompt admission hook이 모델 해석 전에 `session.switchModel`로 계약 모델을 해당 child에 적용한다.
+- tool before/after hook이 native 입력, child ID·parent·agent, 실제 assistant model, 결과 JSON을 검증한다.
 
-이는 native `subagent` 도구의 자식 세션이 아니므로 부모 문맥·완료 알림이 자동 전달되지 않는다. 메인이 작업 계약을 인자로 주고 결과를 회수한다. OpenCode v2.0.10 실측에서 설치된 `research-pen`은 Luna medium이었지만 위 호출의 새 세션 메타데이터는 `agent=research-pen`, `model=gpt-5.6-terra#medium`이었고 `parentID`는 없었다. 설치된 agent `.md`는 수정하지 않았다.
+OpenCode v2.0.15 실측에서 `explore-pen`의 설치 모델은 `openai/gpt-5.6-luna#low`였지만, 계약 모델 `ollama-cloud/deepseek-v4.1-flash#max`로 child session과 assistant 메시지가 전환됐다. child의 `parentID`는 호출한 pen session이었고 설치된 agent `.md`와 root config는 바뀌지 않았다.
 
-### 런타임 모델 변경 — 검증 결과 (v2.0.10)
+### 런타임 모델 변경 — 검증 결과 (v2.0.10·v2.0.15)
 
 | 대상 | 방법 | registry 반영 | 실제 세션 실행 모델 반영 |
 | --- | --- | --- | --- |
 | **subagent** | `agents/<id>.md`의 `model` 수정 | 반영됨 | **반영됨** (실측) |
 | **subagent** | plugin `ctx.agent.transform` + `reload()` | 반영됨 | **반영되지 않음** (실측) |
+| **subagent** | plugin child `prompt` hook + `session.switchModel` | session에 기록 | **반영됨** (v2.0.15 실측) |
 | **primary** | `agents/<id>.md`의 `model` 수정 | 반영됨 | **반영되지 않음** (실측) |
 | **primary** | root `opencode.jsonc`의 `model` | 반영됨 | **반영됨** (세션 기본값) |
 
@@ -166,7 +168,7 @@ opencode run --agent research-pen --model openai/gpt-5.6-terra#medium "완전한
 
 **결론**:
 
-- **native child의 지속적 모델 설정**은 agent `.md`의 `model:` 편집으로 동작한다. 작업별 선택에는 사용하지 않는다. 작업별 모델은 CLI `--agent`·`--model`로 별도 실행한다.
+- **native child의 지속적 기본 모델**은 agent `.md`의 `model:` 편집으로 동작한다. 작업별 선택은 정적 agent transform이 아니라 child prompt admission hook에서 session model을 전환한다.
 - **primary(pen) 자신의 모델**은 root `opencode.jsonc`의 `model`이 결정한다. agent 파일의 `model`은 primary 세션에 적용되지 않는다.
 - V2 문서의 "session stores its selected model separately. Selecting a primary agent by ID does not change that model"이 이 동작을 설명한다.
 
@@ -317,6 +319,7 @@ oh-pen의 제한 역할은 `shell "*" deny` 뒤에 `pwd`, 파일 목록·검색�
 - Permissions: <https://opencode.ai/v2/docs/permissions/>
 - Config: <https://opencode.ai/v2/docs/config/>
 - Tools (subagent tool): <https://opencode.ai/v2/docs/tools/>
+- Plugins (prompt·tool hooks, session model): <https://opencode.ai/v2/docs/build/plugins/>
 - CLI run (`--agent`, `--model`): <https://opencode.ai/v2/docs/cli/commands/>
 - Models / variants: <https://opencode.ai/v2/docs/models/>
 - Instructions (AGENTS.md): <https://opencode.ai/v2/docs/instructions/>

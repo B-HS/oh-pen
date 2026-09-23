@@ -1,17 +1,18 @@
-# pen 실행·재개 도구
+# pen native child·실행 재개 도구
 
 ## 적용 범위
 
-v0.2.0은 메인 `pen`과 전문 에이전트 7종, 계약 스키마와 Bun 실행 도구를 함께 설치합니다. 기존 native child 실행은 유지합니다. 작업별 상속·직접 모델 지정은 실행 도구가 별도 OpenCode 세션을 만들고 `opencode run --session --agent --model --format json`을 호출합니다. 설치된 모델·root 설정을 변경하지 않습니다.
+v0.3.0은 메인 `pen`과 전문 에이전트 7종, OpenCode V2 plugin, 계약 스키마와 Bun 호환 실행 도구를 함께 설치합니다. 작업별 상속·직접 모델 지정은 `pen_subagent`가 계약을 준비하고 OpenCode의 native `subagent`가 실제 child session을 만드는 방식입니다. plugin은 child prompt admission 전에 선택 모델을 적용하며 설치된 모델·root 설정을 변경하지 않습니다.
 
-실행 전에 사용자는 기존처럼 workflow와 모델 방식을 선택합니다. 아래 명령은 그 선택을 적용하는 메인 전용 도구이며 전문 에이전트가 스스로 실행하거나 재위임하는 도구가 아닙니다.
+실행 전에 사용자는 기존처럼 workflow와 모델 방식을 선택합니다. 전문 에이전트는 `pen_subagent`와 중첩 `subagent`를 사용할 수 없으며 메인 `pen`만 위임 계약을 준비합니다.
 
 ## 설치 파일
 
 | 경로 | 역할 |
 | --- | --- |
 | `~/.config/opencode/agents/review-pen.md` | 일반 동작·회귀·설계·컨벤션 읽기 전용 리뷰 |
-| `~/.config/opencode/oh-pencode/runtime.js` | 실행·상태·취소·재개·조사 근거 관리 |
+| `~/.config/opencode/plugins/oh-pencode.js` | native child의 호출별 모델 적용·입력/결과 검증 |
+| `~/.config/opencode/oh-pencode/runtime.js` | 별도 CLI 호환 실행·상태·취소·재개·조사 근거 관리 |
 | `~/.config/opencode/oh-pencode/task.schema.json` | 작업 입력 JSON Schema |
 | `~/.config/opencode/oh-pencode/result.schema.json` | 전문 에이전트 결과 JSON Schema |
 
@@ -19,7 +20,7 @@ v0.2.0은 메인 `pen`과 전문 에이전트 7종, 계약 스키마와 Bun 실�
 
 ## 작업 계약
 
-프로젝트의 실제 경로·완료 조건·선택한 모델로 다음 계약을 작성합니다. `taskId`는 프로젝트 안에서 고유해야 합니다. 계약 파일은 실행 전에 저장하고 실행 중에는 변경하지 않습니다.
+프로젝트의 실제 경로·완료 조건·선택한 모델로 다음 계약을 구성합니다. `taskId`는 parent session 안에서 고유해야 합니다. `pen`은 상속·직접 지정에서 이 객체를 `pen_subagent`에 전달하고, 반환된 `nextInput`을 변경하지 않은 채 Code Mode 밖의 native `subagent` 도구에 전달합니다.
 
 ```json
 {
@@ -47,6 +48,10 @@ v0.2.0은 메인 `pen`과 전문 에이전트 7종, 계약 스키마와 Bun 실�
 - `checks`에는 실행할 명령을 인자 배열과 기대 결과로 기록합니다. 예: `{"command":["bun","test","src/example.test.ts"],"expectation":"실패 0건"}`.
 - 필수 계약 누락·자기 의존·미완료 선행 작업은 모델 실행 전에 거부합니다. 계약을 바꾸려면 새 작업 ID를 사용합니다.
 
+`pen_subagent`는 child를 직접 만드는 도구가 아닙니다. 같은 parent session의 다음 native 입력을 예약하고 검증합니다. native `subagent`가 child를 만들고 prompt를 수락할 때 plugin이 child의 agent와 `parentID`를 대조하고 `session.switchModel`로 계약 모델을 적용합니다. 이 방식 때문에 child는 OpenCode의 built-in subagent 목록에 그대로 표시됩니다.
+
+아래 CLI는 native child가 아닌 별도 세션이 필요한 호환·복구 작업에서만 사용합니다.
+
 ```bash
 bun ~/.config/opencode/oh-pencode/runtime.js validate docs/task.json
 bun ~/.config/opencode/oh-pencode/runtime.js run docs/task.json
@@ -64,16 +69,16 @@ bun ~/.config/opencode/oh-pencode/runtime.js status locate-validation
 | `evidence`, `verification` | 파일·출처 근거, 명령 인자 배열·exitCode·검증 요약 |
 | `risks`, `decisionRequests` | 미검증 위험, 필요한 메인 결정 |
 
-실행 도구는 실제 세션 메시지에서 agent/model을 확인하고 결과를 검증합니다. 완료 조건 누락, 다른 작업 ID, 검증 실패, 보고되지 않은 실제 파일 변경, 소유 범위 밖 변경, Git HEAD 변경은 DONE으로 처리하지 않습니다. 원본 셸 로그는 보관하지 않습니다.
+plugin은 native child context의 실제 assistant 메시지에서 agent/model을 확인하고 결과를 검증합니다. 완료 조건 누락, 다른 작업 ID, 실패 검증, 소유 범위 밖 변경 보고, 다른 parent·child 또는 다른 모델은 native 호출 실패로 처리합니다. 호환 CLI runtime은 추가로 프로젝트 snapshot과 Git HEAD를 검사합니다. 원본 셸 로그는 보관하지 않습니다.
 
-검증 명령의 성공 보고는 모델이 제출한 근거입니다. 메인은 실제 파일·출력과 대조해야 하며 이 도구가 모델의 모든 주장을 독립적으로 증명하지는 않습니다. native child는 같은 계약을 따르되 결과·session ID·파일 소유권을 메인이 PROCESS에 기록하고 대조합니다.
+검증 명령의 성공 보고는 모델이 제출한 근거입니다. 메인은 실제 파일·출력과 대조해야 하며 plugin이 모델의 모든 주장을 독립적으로 증명하지는 않습니다. 결과·session ID·파일 소유권은 메인이 PROCESS에 기록하고 대조합니다.
 
 ## 실행 한도와 역할 선택
 
 | 항목 | 한도 |
 | --- | --- |
-| 시간 | 기본 10분, 계약에서 최대 60분 이내 조정 |
-| 재시도 | 최대 2회, 자동 재시도 없음, 동일 계약의 명시적 resume |
+| 준비 유효 시간 | 기본 10분, 계약에서 최대 60분 이내 조정. 이 안에 native 호출을 시작해야 함 |
+| 재시도 | 최대 2회, 자동 재시도 없음, 같은 parent·계약·child의 명시적 resume |
 | 동시 실행 | 읽기 전용 작업 최대 2개, 수정 작업은 공유 디렉터리에서 직렬 |
 | 모델 단계 | 역할 정의의 48단계 상한, 도달 시 완전한 결과가 없으면 미완료 |
 | 출력 | 기본 최대 1 MiB, 계약에서 더 작게 제한 가능 |
@@ -87,6 +92,12 @@ bun ~/.config/opencode/oh-pencode/runtime.js status locate-validation
 `metrics`는 실제 시도별 역할·모델·완료 수·시간과 관측된 입력/출력 토큰·비용을 집계합니다. 서버가 사용량을 제공하지 않았거나 중단되어 수집하지 못했으면 `null`입니다. 금액을 추정하거나 누락 사용량을 0으로 만들지 않습니다.
 
 ## 취소와 재개
+
+native foreground child의 취소는 현재 `subagent` tool call을 중단하는 OpenCode 동작을 사용합니다. 재개는 같은 parent session에서 같은 계약과 `taskId`를 `pen_subagent`에 `resume: true`로 전달하면 저장된 child `sessionID`가 `nextInput`에 포함됩니다. parent·계약·모델이 바뀌면 새 작업 ID를 사용합니다.
+
+준비된 native 호출이 모델·결과 계약 오류로 실패하면 같은 `nextInput`을 직접 재호출할 수 없습니다. 계약의 재시도 한도가 남아 있으면 `pen_subagent`로 다시 준비해야 하며, plugin은 성공한 입력의 중복 사용도 거부합니다. 이 경계는 실패한 호출 뒤 설치 기본 모델로 우회 실행되는 것을 막습니다.
+
+아래 명령은 별도 CLI 호환 실행의 취소·재개 경로입니다.
 
 ```bash
 bun ~/.config/opencode/oh-pencode/runtime.js cancel locate-validation
@@ -118,10 +129,12 @@ verify-pen은 명시된 test/typecheck/lint/build와 Git 조회 명령만 허용
 
 ## 공식 근거
 
+- [OpenCode Plugins](https://opencode.ai/v2/docs/build/plugins/): prompt admission hook, session model 전환, tool hook
+- [OpenCode Tools](https://opencode.ai/v2/docs/tools/): native subagent child·foreground·resume 계약
 - [OpenCode CLI](https://opencode.ai/v2/docs/cli/commands/): run의 session·agent·model·JSON 출력 및 API 호출
 - [OpenCode Permissions](https://opencode.ai/v2/docs/permissions/): 마지막 일치 규칙, 셸 권한의 한계
 - [OpenCode Agents](https://opencode.ai/v2/docs/agents/): 역할과 steps
 - [Bun child processes](https://bun.sh/docs/runtime/child-process): 인자 배열·AbortSignal·프로세스 종료
 - [Zod schema API](https://zod.dev/api): 외부 JSON 검증
 
-2026-09-22에 로컬 OpenCode의 `run --help`와 `/openapi.json`을 확인했습니다. 세션 생성의 model은 providerID/id/variant, 결과는 assistant content의 text, 중단은 `POST /api/session/{sessionID}/interrupt` 계약을 사용합니다.
+2026-09-24에 OpenCode v2.0.15에서 plugin 등록과 실제 native child를 확인했습니다. child는 현재 pen session의 `parentID`, 지정한 agent, 호출 계약의 `providerID/id/variant`를 저장했고 assistant 메시지도 같은 모델로 완료했습니다.

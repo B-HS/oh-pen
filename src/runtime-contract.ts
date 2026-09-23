@@ -15,6 +15,7 @@ export const RUNTIME_LIMITS = {
 } as const
 
 export const TaskIdSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/)
+export const SessionIdSchema = z.string().regex(/^ses[a-zA-Z0-9_-]+$/)
 export const isSensitivePath = (path: string) =>
     path.split('/').some((segment) => /^(?:\.env(?:\..*)?|secrets|id_rsa.*|id_ed25519.*)$|\.(?:pem|key)$/i.test(segment))
 export const RelativeFileSchema = z
@@ -112,10 +113,8 @@ export const CheckpointSchema = z.strictObject({
     status: z.enum(['RUNNING', 'DONE', 'PARTIAL', 'BLOCKED', 'FAILED', 'CANCELLED', 'TIMED_OUT', 'INTERRUPTED']),
     attempt: z.number().int().nonnegative(),
     runnerPid: z.number().int().positive(),
-    sessionId: z
-        .string()
-        .regex(/^ses[a-zA-Z0-9_-]+$/)
-        .optional(),
+    sessionId: SessionIdSchema.optional(),
+    parentSessionId: SessionIdSchema.optional(),
     snapshot: SnapshotSchema,
     startedAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),

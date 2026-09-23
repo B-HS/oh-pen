@@ -11,7 +11,7 @@ const cancellationPath = (id: string) => `.opencode/pen-state/tasks/${id}.cancel
 
 export const runTask = async (
     input: unknown,
-    options: { directory: string; resume?: boolean; signal?: AbortSignal; transport?: OpenCodeTransport },
+    options: { directory: string; resume?: boolean; parentSessionId?: string; signal?: AbortSignal; transport?: OpenCodeTransport },
 ) => {
     const contract = TaskContractSchema.parse(input)
     const contractHash = digest(JSON.stringify(contract))
@@ -20,6 +20,8 @@ export const runTask = async (
     if (options.resume && !previous) throw new Error('재개할 체크포인트가 없습니다.')
     if (previous?.status === 'RUNNING') throw new Error('실행 중인 작업입니다. 중단된 작업은 recover로 확인하세요.')
     if (previous && previous.contractHash !== contractHash) throw new Error('계약이 변경되었습니다. 새 작업 ID를 사용하세요.')
+    if (previous?.parentSessionId !== undefined && previous.parentSessionId !== options.parentSessionId)
+        throw new Error('다른 pen 세션에서 만든 child 작업입니다. 원래 parent session에서 재개하거나 새 작업 ID를 사용하세요.')
     const dependencies = await Promise.all(contract.dependsOn.map((id) => readCheckpoint(options.directory, id)))
     if (dependencies.some((task) => task?.status !== 'DONE')) throw new Error('완료되지 않은 선행 작업이 있습니다.')
     const release = await acquireSlot(options.directory, contract.taskId, contract.limits.maxConcurrent, contract.ownedFiles.length > 0)
@@ -84,6 +86,7 @@ export const runTask = async (
             tokens: null,
             cost: null,
             ...(previous?.sessionId ? { sessionId: previous.sessionId } : {}),
+            ...(options.parentSessionId ? { parentSessionId: options.parentSessionId } : {}),
         })
         await writeJson(options.directory, taskPath(contract.taskId), checkpoint)
         timer = setTimeout(() => stop('TIMED_OUT'), contract.limits.timeoutMs)
@@ -94,7 +97,7 @@ export const runTask = async (
         if (stopReason) throw new Error('역할 확인 중 실행이 취소되었습니다.')
         if (!checkpoint.sessionId) checkpoint.sessionId = await transport.createSession(contract)
         await writeJson(options.directory, taskPath(contract.taskId), checkpoint)
-        if (stopReason) {
+        if (stopReason && checkpoint.sessionId) {
             interruption = interrupt(checkpoint.sessionId)
             throw new Error('세션 준비 중 실행이 취소되었습니다.')
         }
@@ -120,9 +123,15 @@ export const runTask = async (
             JSON.stringify(evidence),
         ].join('\n')
         const run = await transport.runSession(contract, checkpoint.sessionId, prompt, controller.signal)
+        if (run.sessionId) {
+            if (checkpoint.sessionId && checkpoint.sessionId !== run.sessionId) throw new Error('재개한 child session이 계약과 다릅니다.')
+            checkpoint.sessionId = run.sessionId
+            await writeJson(options.directory, taskPath(contract.taskId), checkpoint)
+        }
+        if (!checkpoint.sessionId) throw new Error('native child session ID를 확인하지 못했습니다.')
         checkpoint.outputBytes = run.outputBytes
         if (stopReason) throw new Error('실행이 중단되었습니다.')
-        const response = await transport.readResult(contract, checkpoint.sessionId, startedAt)
+        const response = run.response ?? (await transport.readResult(contract, checkpoint.sessionId, startedAt))
         if (stopReason) throw new Error('결과 회수 중 실행이 중단되었습니다.')
         if (response.steps > contract.limits.maxSteps) throw new Error('모델 단계 상한을 넘은 실행입니다.')
         const result = validateResult(response.result, contract)

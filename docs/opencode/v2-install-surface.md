@@ -1,8 +1,8 @@
 # OpenCode V2 설치 지점 (install surface)
 
 > installer가 실제로 건드리는 파일·디렉터리와 그 이유.
-> 검증 환경: OpenCode v2.0.10, macOS.
-> Source: <https://opencode.ai/v2/docs/config/>, <https://opencode.ai/v2/docs/agents/>, <https://opencode.ai/v2/docs/instructions/>
+> 검증 환경: OpenCode v2.0.15, macOS.
+> Source: <https://opencode.ai/v2/docs/config/>, <https://opencode.ai/v2/docs/agents/>, <https://opencode.ai/v2/docs/build/plugins/>
 
 ---
 
@@ -12,6 +12,7 @@
 | --- | --- | --- |
 | config (전역) | `~/.config/opencode/opencode.json(c)` | `opencode debug config`로 확인 |
 | agents (전역) | `~/.config/opencode/agents/<name>.md` | 확인 |
+| plugins (전역) | `~/.config/opencode/plugins/<name>.js` | plugin list와 native child 실측 |
 | instructions (전역) | `~/.config/opencode/AGENTS.md` | 문서 기준 |
 | skills (전역) | `~/.config/opencode/skills/<id>/SKILL.md` | 문서 기준 |
 | data | `~/.local/share/opencode` | `opencode debug paths` |
@@ -66,12 +67,17 @@
 ~/.config/opencode/agents/doc-pen.md
 ~/.config/opencode/agents/verify-pen.md
 ~/.config/opencode/agents/security-pen.md
+~/.config/opencode/agents/review-pen.md
 ~/.config/opencode/agents/build.md          (hidden)
 ~/.config/opencode/agents/plan.md           (hidden)
+~/.config/opencode/plugins/oh-pencode.js
 ~/.config/opencode/oh-pencode/manifest.json
+~/.config/opencode/oh-pencode/runtime.js
+~/.config/opencode/oh-pencode/task.schema.json
+~/.config/opencode/oh-pencode/result.schema.json
 ```
 
-총 9개 agent 파일(7 pen + build/plan hidden) + config + manifest다.
+총 10개 agent 파일(8 pen + build/plan hidden), plugin, runtime·schema, config, manifest다.
 
 ### 설정 병합 방식
 
@@ -89,8 +95,8 @@ installer는 `opencode.jsonc`를 **통째로 덮어쓰지 않는다.** 다음을
 
 ### 멱등성
 
-- agents/`*.md`는 installer가 관리하는 파일이므로 재실행 시 전체 재생성한다.
-- 사용자가 그 파일을 수정했을 수 있으므로 **해시를 manifest에 기록**하고, 다르면 확인 없이 자동 보존하고 경고만 출력한다 (`--force`면 덮는다).
+- agent·plugin·runtime·schema는 installer가 관리하는 파일이다.
+- 사용자가 관리 파일을 수정했을 수 있으므로 **해시를 manifest에 기록**하고, 다르면 확인 없이 자동 보존하고 경고만 출력한다 (`--force`면 덮는다). agent의 `model:`만 바뀐 경우에는 그 모델을 보존하면서 관리 본문을 갱신한다.
 - manifest: `~/.config/opencode/oh-pencode/manifest.json`
 
 ```jsonc
@@ -142,20 +148,17 @@ opencode debug paths           # 경로 확인
 `opencode debug agents`는 JSON을 출력하므로 installer의 `verify` 단계에서 파싱해 다음을 단언한다 (src/verify.ts).
 
 - `pen`이 존재하고 `mode: primary`
-- `build`·`plan`의 agent 파일이 전역 agents 디렉터리에 존재하는지 (파일 존재 검사. `hidden: true` 속성 단언은 아님)
-- 각 `*-pen` subagent의 `mode`와, manifest에 기록된 기대 `model`의 반영
-- `default_agent`가 `pen` (config에서 확인)
+- 설치 대상으로 선택한 `build`·`plan`의 실제 runtime `hidden: true`
+- 각 `*-pen` subagent의 mode·48단계 상한·권한 경계와 manifest에 기록된 기대 model 또는 상속 상태
+- `default_agent`가 설치 manifest의 값과 일치하는지
 - root `model`이 manifest 기록 값과 일치 (manifest.config.rootModel이 있는 경우)
+- plugin·runtime·schema를 포함한 모든 manifest 파일의 SHA-256
 
-permissions 반영 검증은 미구현이다. 실제 검사 항목은 파일 존재·mode·model·default_agent·root model이다.
+호출별 child 모델은 정적 `debug agents` 결과가 아니라 plugin의 native 실행 후 child session과 assistant 메시지에서 검증한다.
 
 ### reload
 
-설정은 보통 파일 변경 시 자동 반영된다. 서버 재시작 없이 반영하려면:
-
-```bash
-opencode reload
-```
+agent 설정은 파일 변경 뒤 새 session에서 반영된다. plugin 번들 갱신도 새 session에서 확인한다. agent registry를 plugin 내부에서 갱신할 때만 V2 API의 `agent.reload()`를 사용한다.
 
 ---
 

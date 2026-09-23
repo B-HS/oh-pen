@@ -1,7 +1,7 @@
 # pen 에이전트 세트 설계
 
 > OpenCode V2 기준. `docs/opencode/v2-agents.md`의 agent·permission·model 계약을 전제로 한다.
-> 검증 환경: OpenCode v2.0.10.
+> 검증 환경: OpenCode v2.0.15.
 
 ## 1. 목표
 
@@ -48,12 +48,14 @@
 - `pen`은 새 도구 사용 작업마다 workflow 사용 여부와 subagent 모델 방식을 함께 질문한다.
 - 기본 선택은 설치된 GPT 역할 배정이며, 사용자는 pen 모델 상속 또는 역할별 직접 지정을 선택할 수 있다.
 - 기본 GPT 배정은 native `subagent` 도구를 사용한다. 이 도구에는 호출별 model 파라미터가 없다.
-- 현재 pen 모델 상속 또는 역할별 직접 지정은 `opencode run --agent <agent-id> --model <provider/model#variant> <작업 계약 인자>`로 별도 실행한다. 상속 선택에서는 실제 현재 세션 모델을 확인해 `--model`에 명시한다.
-- CLI 실행은 native 자식 세션이 아니다. 부모 문맥·완료 알림·모델을 자동 상속하지 않으며 메인이 완전한 작업 계약을 전달하고 출력을 회수해 통합한다.
+- 현재 pen 모델 상속 또는 역할별 직접 지정은 bundled V2 plugin의 `pen_subagent`에 계약을 준비한 뒤 native `subagent`를 실행한다.
+- `pen_subagent`는 child를 직접 만들지 않는다. 같은 parent의 다음 native 입력을 검증하고, native 도구가 child를 만든 뒤 prompt admission hook에서 계약 모델을 해당 child session에 적용한다.
+- child는 실제 `parentID`를 가지므로 OpenCode의 subagent 탐색과 취소·foreground 결과 흐름을 그대로 사용한다. plugin은 child의 parent·agent·실제 assistant model·결과 JSON을 검증한다.
 - 호출별 선택으로 설치된 agent `.md`, root config, 프로젝트 agent·command 파일을 수정하지 않는다. 다음 작업의 설치 기본값은 그대로 유지한다.
-- 역할 ID는 설치된 에이전트에서 선택하고 사용자 입력은 안전한 독립 명령 인자로 전달한다. 플래그 실행이 불가능하면 설정을 바꿔 우회하지 않고 이유를 보고한다.
+- 역할 ID와 계약 입력은 plugin 스키마에서 검증한다. 선택 모델을 사용할 수 없거나 native child 검증이 실패하면 설정을 바꿔 우회하지 않고 해당 호출을 실패시킨다.
+- 준비된 호출이 실패하면 native 입력을 직접 재사용하지 않고 `pen_subagent`로 다시 준비한다. plugin은 실패 후 무준비 재시도와 성공 입력 중복 사용을 차단한다.
 - primary 모델은 session에 저장된다. agent 파일의 `model:`은 선택된 primary session 모델을 바꾸지 않는다.
-- 활성 작업 중 root model을 바꾸고 reload하거나 새 session을 요구하지 않는다. primary 변경은 installer 또는 사용자의 명시적인 설정 작업으로 처리한다.
+- prompt admission hook은 child session만 전환하며 primary session 모델은 바꾸지 않는다. primary 변경은 installer 또는 사용자의 명시적인 설정 작업으로 처리한다.
 
 ### convention 기본값
 
@@ -146,8 +148,8 @@ subagent prompt에는 다음을 실제 파일 근거로 제공한다.
 
 Markdown body는 OpenCode V2에서 provider별 기본 system prompt를 대체한다. 따라서 각 custom agent는 역할·권한·완료·보고 계약을 self-contained하게 유지하고, 프로젝트별 코딩 컨벤션은 실제 `AGENTS.md`와 instructions에서 받는다.
 
-## 9. 실행 계약·상태·재사용 (v0.2.0)
+## 9. 실행 계약·상태·재사용 (v0.3.0)
 
-공통 작업/결과 스키마, 호출별 CLI 실행 관리, 취소·재개·한도·역할 선택·사용량 기록·근거 유효성 검사는 [실행 도구 안내](runtime.md)를 따릅니다. native child는 같은 결과 계약과 메인 소유 PROCESS 기록을 사용합니다. 모델 선택과 시작 질문은 기존 동작을 유지합니다.
+공통 작업/결과 스키마, native child의 호출별 모델 적용·검증·재개와 호환 CLI의 상태·취소·근거 재사용은 [실행 도구 안내](runtime.md)를 따릅니다. native child는 같은 결과 계약과 메인 소유 PROCESS 기록을 사용합니다. 모델 선택과 시작 질문은 기존 동작을 유지합니다.
 
 제한 역할의 셸 허용은 공통 조회 명령과 역할별 테스트·타입·빌드·감사의 명시 목록으로 제한합니다. 자동 수정 플래그와 출력 리다이렉션을 거부하며 이 제한을 운영체제 sandbox로 설명하지 않습니다. 설치 verify는 실제 runtime 등록·hidden·모델·권한과 설치 파일 해시를 확인하고 누락을 실패로 처리합니다.

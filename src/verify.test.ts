@@ -2,9 +2,9 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { AGENT_IDS, RUNTIME_ASSET, parseAgentFile } from './agent-contract.ts'
+import { AGENT_IDS, PLUGIN_ASSET, RUNTIME_ASSET, parseAgentFile } from './agent-contract.ts'
 import { sha256 } from './fs.ts'
-import { verifyInstallation } from './verify.ts'
+import { verifyInstallation, verifyPluginRegistration } from './verify.ts'
 
 const roots = new Set<string>()
 const fixture = async () => {
@@ -18,7 +18,9 @@ const fixture = async () => {
         }),
     )
     const runtime = 'runtime fixture'
+    const plugin = 'plugin fixture'
     await Bun.write(join(root, RUNTIME_ASSET), runtime)
+    await Bun.write(join(root, PLUGIN_ASSET), plugin)
     const agents = [
         ...definitions.map(({ id, mode, permissions, steps }) => ({ id, mode, permissions, steps })),
         { id: 'build', hidden: true, permissions: [] },
@@ -29,6 +31,7 @@ const fixture = async () => {
         ...definitions.map(({ id, content }) => ({ path: `agents/${id}.md`, sha256: sha256(content), originSha256: sha256(content) })),
         ...['build', 'plan'].map((id) => ({ path: `agents/${id}.md`, sha256: sha256('hidden'), originSha256: sha256('hidden') })),
         { path: RUNTIME_ASSET, sha256: sha256(runtime), originSha256: sha256(runtime) },
+        { path: PLUGIN_ASSET, sha256: sha256(plugin), originSha256: sha256(plugin) },
     ]
     return { root, agents, manifest: { version: 'test', installedAt: new Date().toISOString(), files, models: {}, config: {} } }
 }
@@ -38,6 +41,11 @@ afterEach(async () => {
 })
 
 describe('설치 상태 검증', () => {
+    test('설치 경로의 plugin이 OpenCode에 활성 등록되어야 한다', () => {
+        const root = '/tmp/opencode-config'
+        expect(verifyPluginRegistration(`oh-pencode.child-session  local    ${join(root, PLUGIN_ASSET)}`, root).ok).toBe(true)
+        expect(verifyPluginRegistration('other-plugin  local    /tmp/other.js', root).ok).toBe(false)
+    })
     test('실제 등록·권한·설치 파일이 일치하면 통과한다', async () => {
         expect((await verifyInstallation(await fixture())).ok).toBe(true)
     })

@@ -5,7 +5,7 @@ import { applyManagedKeys, readConfig, writeConfig, type ConfigChange } from "./
 import { exists, listFiles, readManifest, sha256, timestamp, writeManifest, type Manifest } from "./fs.ts"
 import { hasOnlyModelOverride, readModelLine, writeModelLine } from "./models.ts"
 import { configRoot } from "./paths.ts"
-import { AGENT_IDS, CONTRACT_ASSET, RESULT_ASSET, RUNTIME_ASSET, parseAgentFile } from "./agent-contract.ts"
+import { AGENT_IDS, CONTRACT_ASSET, PLUGIN_ASSET, RESULT_ASSET, RUNTIME_ASSET, parseAgentFile } from "./agent-contract.ts"
 import type { InstallAnswers } from "./interview.ts"
 
 export type InstallOptions = {
@@ -75,7 +75,15 @@ export const install = async (options: InstallOptions): Promise<InstallResult> =
   const result: InstallResult = { wrote: [], skipped: [], preserved: [], warnings: [], backups: [], configChanges: [] }
 
   const assetPaths = await options.assets.list()
-  const allowed = new Set([...AGENT_IDS.map((id) => `agents/${id}.md`), "agents/builtin/build.md", "agents/builtin/plan.md", RUNTIME_ASSET, CONTRACT_ASSET, RESULT_ASSET])
+  const allowed = new Set([
+    ...AGENT_IDS.map((id) => `agents/${id}.md`),
+    "agents/builtin/build.md",
+    "agents/builtin/plan.md",
+    PLUGIN_ASSET,
+    RUNTIME_ASSET,
+    CONTRACT_ASSET,
+    RESULT_ASSET,
+  ])
   if (assetPaths.some((path) => !allowed.has(path))) throw new Error("지원하지 않는 설치 에셋 경로가 있습니다.")
   const agentAssets = assetPaths.filter((path) => path.startsWith("agents/"))
   const managedAssets = assetPaths

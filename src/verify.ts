@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { AGENT_IDS, AgentSchema, permissionProbes, resolvePermission, RUNTIME_ASSET } from './agent-contract.ts'
+import { join } from 'node:path'
+import { AGENT_IDS, AgentSchema, PLUGIN_ASSET, permissionProbes, resolvePermission, RUNTIME_ASSET } from './agent-contract.ts'
 import { readConfig, readDefaultAgent, readRootModel } from './config.ts'
 import { exists, readManifest, sha256 } from './fs.ts'
 import type { Manifest } from './fs.ts'
@@ -10,6 +11,19 @@ import { RUNTIME_LIMITS } from './runtime-contract.ts'
 import { safeFile } from './runtime-state.ts'
 
 type VerifyCheck = { name: string; ok: boolean; detail: string }
+
+export const verifyPluginRegistration = (output: string, root: string) => {
+    const expectedPath = join(root, PLUGIN_ASSET)
+    const registered = output
+        .split('\n')
+        .map((line) => line.trim())
+        .find((line) => line.startsWith('oh-pencode.child-session '))
+    return {
+        name: 'plugin active',
+        ok: registered?.includes(expectedPath) === true,
+        detail: registered ?? `기대 경로: ${expectedPath}`,
+    }
+}
 
 export const verifyInstallation = async (input: {
     root: string
@@ -55,7 +69,9 @@ export const verifyInstallation = async (input: {
         checks.push({ name: `${id} hidden`, ok: byId.get(id)?.hidden === true, detail: 'runtime hidden=true 확인' })
     }
     for (const file of input.manifest.files) {
-        const isSafe = /^(?:agents\/[a-z0-9-]+\.md|oh-pencode\/(?:runtime\.js|task\.schema\.json|result\.schema\.json))$/.test(file.path)
+        const isSafe = /^(?:agents\/[a-z0-9-]+\.md|plugins\/oh-pencode\.js|oh-pencode\/(?:runtime\.js|task\.schema\.json|result\.schema\.json))$/.test(
+            file.path,
+        )
         let isMatch = false
         if (isSafe) {
             try {
@@ -68,6 +84,7 @@ export const verifyInstallation = async (input: {
         checks.push({ name: `${file.path} sha256`, ok: isMatch, detail: isMatch ? '설치 시점과 일치' : '누락·변경·허용되지 않는 경로' })
     }
     checks.push({ name: 'runtime bundle', ok: input.manifest.files.some((file) => file.path === RUNTIME_ASSET), detail: '실행 도구 설치 기록' })
+    checks.push({ name: 'plugin bundle', ok: input.manifest.files.some((file) => file.path === PLUGIN_ASSET), detail: 'native subagent plugin 설치 기록' })
     if (input.manifest.config.defaultAgent !== undefined)
         checks.push({ name: 'default_agent', ok: input.defaultAgent === input.manifest.config.defaultAgent, detail: '설치 시 선택과 비교' })
     if (input.manifest.config.rootModel !== undefined)
@@ -79,14 +96,21 @@ export const runVerify = async (options: { directory: string }) => {
     const manifest = await readManifest(manifestFile())
     if (!manifest) return { checks: [{ name: 'manifest', ok: false, detail: '설치 manifest가 없거나 올바르지 않습니다.' }], ok: false }
     try {
-        const debug = await executeBounded(['opencode', 'debug', 'agents'], {
+        const executionOptions = {
             directory: options.directory,
             timeoutMs: RUNTIME_LIMITS.stopTimeoutMs,
             maxOutputBytes: RUNTIME_LIMITS.maxOutputBytes,
-        })
+        }
+        const [debug, plugins] = await Promise.all([
+            executeBounded(['opencode', 'debug', 'agents'], executionOptions),
+            executeBounded(['opencode', 'plugin', 'list'], executionOptions),
+        ])
         const agents = z.array(AgentSchema).parse(JSON.parse(debug.stdout))
         const { value: config } = await readConfig(configFile())
-        return verifyInstallation({ root: configRoot(), agents, manifest, defaultAgent: readDefaultAgent(config), rootModel: readRootModel(config) })
+        const root = configRoot()
+        const installation = await verifyInstallation({ root, agents, manifest, defaultAgent: readDefaultAgent(config), rootModel: readRootModel(config) })
+        const plugin = verifyPluginRegistration(plugins.stdout, root)
+        return { checks: [...installation.checks, plugin], ok: installation.ok && plugin.ok }
     } catch (error) {
         return { checks: [{ name: 'runtime', ok: false, detail: error instanceof Error ? error.message : '등록 정보 확인 실패' }], ok: false }
     }

@@ -3,20 +3,10 @@ import { AgentSchema, permissionProbes, resolvePermission } from './agent-contra
 import { parseModelRef } from './models.ts'
 import { RUNTIME_LIMITS } from './runtime-contract.ts'
 import type { TaskContract } from './runtime-contract.ts'
+import { readSessionResult } from './runtime-result.ts'
 
 const SESSION_PAGE_LIMIT = 200
 const SessionIdSchema = z.string().regex(/^ses[a-zA-Z0-9_-]+$/)
-const AssistantSchema = z.object({
-    type: z.literal('assistant'),
-    agent: z.string(),
-    model: z.object({ providerID: z.string(), id: z.string(), variant: z.string().optional() }),
-    time: z.object({ created: z.number(), completed: z.number().optional() }),
-    content: z.array(z.object({ type: z.string(), text: z.string().optional() })),
-    finish: z.string().optional(),
-    cost: z.number().optional(),
-    tokens: z.object({ input: z.number(), output: z.number() }).optional(),
-})
-
 export const executeBounded = async (
     args: string[],
     options: { directory: string; signal?: AbortSignal; timeoutMs: number; maxOutputBytes: number },
@@ -69,7 +59,26 @@ export const executeBounded = async (
     }
 }
 
-export const createOpenCodeTransport = (directory: string, execute = executeBounded) => {
+export type OpenCodeRunResult = {
+    outputBytes: number
+    sessionId?: string
+    response?: {
+        result: unknown
+        steps: number
+        tokens: number | null
+        cost: number | null
+    }
+}
+
+export type OpenCodeTransport = {
+    validateAgent: (task: TaskContract) => Promise<void>
+    createSession: (task: TaskContract) => Promise<string | undefined>
+    runSession: (task: TaskContract, sessionId: string | undefined, prompt: string, signal: AbortSignal) => Promise<OpenCodeRunResult>
+    interruptSession: (sessionId: string) => Promise<void>
+    readResult: (task: TaskContract, sessionId: string, startedAt: number) => Promise<NonNullable<OpenCodeRunResult['response']>>
+}
+
+export const createOpenCodeTransport = (directory: string, execute = executeBounded): OpenCodeTransport => {
     const api = async (args: string[]) => {
         const result = await execute(['opencode', 'api', ...args], {
             directory,
@@ -109,7 +118,8 @@ export const createOpenCodeTransport = (directory: string, execute = executeBoun
             ])
             return z.object({ data: z.object({ id: SessionIdSchema }) }).parse(value).data.id
         },
-        runSession: async (task: TaskContract, sessionId: string, prompt: string, signal: AbortSignal) => {
+        runSession: async (task: TaskContract, sessionId: string | undefined, prompt: string, signal: AbortSignal) => {
+            if (!sessionId) throw new Error('실행할 OpenCode 세션이 없습니다.')
             const result = await execute(
                 [
                     'opencode',
@@ -144,42 +154,7 @@ export const createOpenCodeTransport = (directory: string, execute = executeBoun
                 'type=assistant',
             ])
             const page = z.object({ data: z.array(z.object({ type: z.string() }).passthrough()) }).parse(value)
-            const messages = page.data
-                .filter((message) => message.type === 'assistant')
-                .map((message) => AssistantSchema.parse(message))
-                .filter((message) => message.time.created >= startedAt)
-                .toSorted((left, right) => left.time.created - right.time.created)
-            const last = messages.at(-1)
-            if (!last || !last.time.completed || last.finish !== 'stop') throw new Error('정상적으로 끝난 assistant 결과가 없습니다.')
-            const selected = parseModelRef(task.model)
-            if (
-                messages.some(
-                    (message) =>
-                        message.agent !== task.agent ||
-                        message.model.id !== selected.id ||
-                        message.model.providerID !== selected.providerID ||
-                        (selected.variant !== undefined && message.model.variant !== selected.variant),
-                )
-            )
-                throw new Error('실제 실행 역할 또는 모델이 계약과 다릅니다.')
-            const text = last.content
-                .filter((part) => part.type === 'text')
-                .map((part) => part.text ?? '')
-                .join('\n')
-                .trim()
-            const unwrapped = text.replace(/^```(?:json)?\s*\n/, '').replace(/\n```$/, '')
-            const result: unknown = JSON.parse(unwrapped)
-            return {
-                result,
-                steps: messages.length,
-                tokens: messages.every((message) => message.tokens !== undefined)
-                    ? messages.reduce((total, message) => total + (message.tokens?.input ?? 0) + (message.tokens?.output ?? 0), 0)
-                    : null,
-                cost: messages.every((message) => message.cost !== undefined)
-                    ? messages.reduce((total, message) => total + (message.cost ?? 0), 0)
-                    : null,
-            }
+            return readSessionResult(page.data, task, startedAt)
         },
     }
 }
-export type OpenCodeTransport = ReturnType<typeof createOpenCodeTransport>

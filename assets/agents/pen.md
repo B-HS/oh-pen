@@ -87,6 +87,9 @@ permissions:
   - action: "subagent"
     resource: "review-pen"
     effect: allow
+  - action: "pen_subagent"
+    resource: "*"
+    effect: allow
   - action: "shell"
     resource: "git push *--force*"
     effect: deny
@@ -230,11 +233,14 @@ permissions:
 ## 모델 선택
 
 - A를 선택하면 설치된 GPT 역할 배정(Sol·Terra·Luna)을 변경하지 않고 native `subagent` 도구로 실행한다.
-- B를 선택하면 pen의 실제 현재 세션 모델을 확인한 뒤, 역할별 호출에 `opencode run --agent <agent-id> --model <pen의 현재 모델> <작업 계약 인자>`를 사용한다. 설치된 agent 모델을 지워 상속시키지 않는다.
-- C를 선택하면 사용자가 지정한 역할별 모델로 `opencode run --agent <agent-id> --model <provider/model#variant> <작업 계약 인자>`를 호출한다.
-- CLI의 `--agent`와 `--model`은 별도 세션에서 역할과 모델을 고르는 플래그다. native `subagent` 도구의 자식 세션이 아니므로 메인 세션의 문맥·완료 알림·모델을 자동 상속한다고 가정하지 않는다. 작업 계약을 온전히 전달하고 결과를 직접 회수해 통합한다.
+- B를 선택하면 pen의 실제 현재 세션 모델을 확인한 뒤, 역할과 그 모델을 담은 작업 계약을 `pen_subagent` 도구에 전달한다. 설치된 agent 모델을 지워 상속시키지 않는다.
+- C를 선택하면 사용자가 지정한 역할별 `provider/model#variant`를 작업 계약에 담아 `pen_subagent` 도구를 호출한다.
+- `pen_subagent`는 Code Mode에서 호출한다. 반환 후 Code Mode를 종료하고, `nextInput`을 바꾸지 않은 채 provider에 직접 노출된 native `subagent` 도구에 정확히 한 번 전달한다. native `subagent`는 Code Mode 카탈로그에 없으므로 그 안에서 다시 찾거나 호출하지 않는다.
+- native 호출이 실패하면 같은 입력을 직접 재호출하지 않는다. 계약의 재시도 한도가 남아 있으면 `pen_subagent`로 다시 준비한 뒤 새 native 호출을 실행한다.
+- plugin은 다음 native 호출의 입력을 검증하고, child prompt admission 단계에서 계약 모델을 child session에 적용한 뒤 parent·child·실제 모델·결과 계약을 검증한다.
+- child session은 현재 pen session을 `parentID`로 삼아 native `subagent`가 만들므로 OpenCode의 subagent 탐색에 표시된다.
 - 사용자 지정 모델을 적용하기 위해 `~/.config/opencode/agents/*.md`, `opencode.jsonc`, 프로젝트 agent 파일 또는 command 파일을 수정하거나 일시적 설정 파일을 만들지 않는다. 호출별 선택은 다음 작업의 설치 기본값을 바꾸지 않는다.
-- CLI 명령에 사용자 입력·작업 계약을 넣을 때는 독립된 인자로 안전하게 전달하고, 외부 문자열을 셸 코드로 삽입하지 않는다. 호출별 모델 플래그로 실행할 수 없으면 설치 파일을 수정해 우회하지 않고 정확한 제약을 보고한다.
+- 작업 계약은 `pen_subagent`의 검증된 객체 입력으로 전달하고 외부 문자열을 셸 코드로 삽입하지 않는다. child session을 만들 수 없으면 설치 파일을 수정해 우회하지 않고 정확한 제약을 보고한다.
 - convention 모델은 설치 기본안일 뿐 강제가 아니다. 사용자가 OpenCode에 연결한 유효한 `provider/model#variant`를 명시하면 그 값을 사용한다.
 - 존재하지 않거나 연결되지 않은 모델을 임의의 다른 모델로 대체하지 않는다. 사용할 수 없으면 정확한 오류를 보고한다.
 - primary 모델은 현재 세션에 저장된 값을 유지한다. 활성 작업 중 root model을 바꾸거나 재시작을 유도하지 않는다.
@@ -284,16 +290,16 @@ permissions:
 - 단순 위치 탐색은 explore-pen, 복수 근거 비교는 research-pen, 공식 API 확인·문서 저장은 doc-pen을 선택한다. 같은 사실을 세 역할에 중복 조사시키지 않는다.
 - 구현은 sub-pen, 독립 검사 실행은 verify-pen, 일반 회귀 검토는 review-pen, 보안 경계 변경은 security-pen을 선택한다. 낮은 위험의 단순 변경에 모든 역할을 일괄 호출하지 않는다.
 - native child에도 같은 계약과 공통 JSON 결과 형식을 전달한다. 사용자에게 시작 질문을 다시 하지 않도록 위임 완료 선택임을 명시한다. 작업 ID·native sessionID·소유 파일·선행 의존·검증 상태는 PROCESS에 기록한다.
-- 기본 GPT 배정의 native subagent 경로를 유지한다. 상속·직접 지정 CLI 경로는 bun ~/.config/opencode/oh-pencode/runtime.js run <프로젝트 내부 계약.json>으로 실행한다. 내부에서 opencode run --agent <agent-id> --model <provider/model#variant>와 저장된 session ID를 사용하며 설치 설정은 바꾸지 않는다.
-- CLI 실행 전 validate로 필수 계약·역할·경로를 검사한다. 실행 도구는 기본 10분, 최대 60분, 최대 2회 시도와 읽기 작업 최대 2개 동시 실행을 적용한다. 공유 디렉터리의 수정 작업은 직렬로 실행한다. 이 숫자는 비용 예측이 아니라 실행 상한이다.
-- 메인도 별도 세션이 실행 중인 공유 디렉터리를 수정하지 않는다. 파일 변경은 결과 회수 뒤 통합한다. 필요하면 사용자 요청 범위 안에서 독립 checkout으로 분리한다.
+- 기본 GPT 배정은 native `subagent` 도구를 사용한다. 상속·직접 지정은 `pen_subagent`에 `{ contract, resume: false }`를 전달한 뒤 반환된 `nextInput`으로 native `subagent`를 실행하며 설치 설정은 바꾸지 않는다.
+- plugin은 필수 계약·역할·권한과 parent session별 대기 작업을 먼저 검사한다. 계약의 시간·단계·출력 제한은 실행 상한이며 비용 예측이 아니다.
+- 메인도 child session이 실행 중인 공유 디렉터리를 수정하지 않는다. 파일 변경은 결과 회수 뒤 통합한다. 필요하면 사용자 요청 범위 안에서 독립 checkout으로 분리한다.
 - 각 역할의 단계 상한은 48이며 모델 선택은 사용자가 결정한다. 모델·권한 실패를 우회하거나 무단 다른 모델로 대체하지 않는다.
 
 ## 결과 회수와 중단 후 재개
 
 - DONE/PARTIAL/BLOCKED와 완료 조건·변경 파일·검증 근거를 대조한다. 명령 exit code가 있어도 모델의 주장만으로 실제 검증을 보장하지 않으므로 파일과 출력 근거를 직접 점검한다.
-- CLI status <task-id>로 체크포인트를 확인하고, cancel <task-id>로 중단 요청한다. 멈춘 실행 프로세스는 recover <task-id>로 서버 세션을 종료한 뒤에만 재개한다.
-- 재개 경계에서는 기존 시작 질문을 다시 수행한다. 선택이 같고 계약·실제 프로젝트 상태가 일치할 때만 resume <계약.json>을 사용한다. 모델·계약·상태가 바뀌면 새 작업 ID와 갱신한 계약을 만든다.
+- `pen_subagent`의 task ID와 native `subagent`가 반환한 child session ID를 확인한다. 실행 중단은 현재 native `subagent` tool call을 취소한다.
+- 재개 경계에서는 기존 시작 질문을 다시 수행한다. 같은 parent session에서 선택·계약·실제 프로젝트 상태가 일치할 때만 `pen_subagent`에 `{ contract, resume: true }`를 전달한다. 모델·계약·parent session·상태가 바뀌면 새 작업 ID와 갱신한 계약을 만든다.
 - 결과·검증의 fingerprint가 현재 상태와 달라지면 성공 근거를 재사용하지 않는다. 소유 범위 밖 변경이나 Git HEAD 변경은 자동 되돌리지 않고 실제 diff를 검토한다.
 - 서버 중단을 확인하지 못했거나 PARTIAL/BLOCKED/FAILED이면 완료·commit·push를 보고하지 않는다. 필요한 결정만 메인에서 해결한다.
 - metrics로 역할·모델별 실제 시간·시도·실패·관측 토큰·비용을 확인한다. 제공되지 않은 사용량은 미확인으로 남긴다.

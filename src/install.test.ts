@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { install } from './install.ts'
 import { localAssets } from './assets.ts'
 import { readManifest } from './fs.ts'
-import { RUNTIME_ASSET } from './agent-contract.ts'
+import { PLUGIN_ASSET, RUNTIME_ASSET } from './agent-contract.ts'
 import { writeModelLine } from './models.ts'
 
 const roots = new Set<string>()
@@ -14,6 +14,7 @@ const fixture = async () => {
     roots.add(root)
     const assetsRoot = join(root, 'assets')
     await Bun.write(join(assetsRoot, 'agents/review-pen.md'), await Bun.file('assets/agents/review-pen.md').text())
+    await Bun.write(join(assetsRoot, PLUGIN_ASSET), 'export default { id: "test", setup: async () => {} }')
     await Bun.write(join(assetsRoot, RUNTIME_ASSET), 'export const version = 1')
     return {
         root: join(root, 'config'),
@@ -43,8 +44,10 @@ describe('실행 도구 설치', () => {
         const options = await fixture()
         await install(options)
         expect(await Bun.file(join(options.root, RUNTIME_ASSET)).exists()).toBe(true)
+        expect(await Bun.file(join(options.root, PLUGIN_ASSET)).exists()).toBe(true)
         const manifest = await readManifest(join(options.root, 'oh-pencode/manifest.json'))
         expect(manifest?.files.map((file) => file.path)).toContain(RUNTIME_ASSET)
+        expect(manifest?.files.map((file) => file.path)).toContain(PLUGIN_ASSET)
         expect(manifest?.models).toEqual({ 'review-pen': 'provider/model' })
     })
     test('업그레이드 시 사용자 모델과 수정한 runtime을 보존한다', async () => {
@@ -62,5 +65,6 @@ describe('실행 도구 설치', () => {
         const options = await fixture()
         await install({ ...options, dryRun: true })
         expect(await Bun.file(join(options.root, RUNTIME_ASSET)).exists()).toBe(false)
+        expect(await Bun.file(join(options.root, PLUGIN_ASSET)).exists()).toBe(false)
     })
 })

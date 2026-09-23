@@ -23,7 +23,10 @@ export const isValidModelRef = (value: string) => {
 export const parseModelRef = (value: string) => {
   const valid = ModelRefSchema.parse(value)
   const slash = valid.indexOf("/")
-  const [id, variant] = valid.slice(slash + 1).split("#")
+  const remainder = valid.slice(slash + 1)
+  const hash = remainder.indexOf("#")
+  const id = hash === -1 ? remainder : remainder.slice(0, hash)
+  const variant = hash === -1 ? undefined : remainder.slice(hash + 1)
   return { providerID: valid.slice(0, slash), id, variant }
 }
 

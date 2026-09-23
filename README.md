@@ -23,14 +23,14 @@ oh-pencode installs `pen` as the single primary OpenCode V2 agent and hides the 
 | Install target | Global `~/.config/opencode/` only |
 | Integrity | SHA-256 verification before installer execution |
 
-## What's included in v0.2
+## What's included in v0.3
 
 - **Eight agents with clear roles:** one primary, seven specialists, and a new read-only `review-pen` for correctness and regressions.
 - **Validated delegation:** explicit file ownership, completion criteria, required checks, and a shared DONE/PARTIAL/BLOCKED result format.
-- **Managed CLI sessions:** time and output limits, cancellation, checkpoints, and resume without changing installed model settings.
+- **Native child sessions with per-call models:** a V2 plugin stages the contract, applies the selected model before child prompt admission, and validates the native result without editing installed model settings.
 - **Reusable evidence:** research tied to source versions, file hashes, and expiry, with observed usage and completion metrics.
 
-The runtime manages separate CLI sessions. Native child agents follow the same work and result contracts, with state recorded and checked by `pen`. See the [runtime guide](https://b-hs.github.io/oh-pen/docs/runtime.html) for a complete task example and operational limits.
+The plugin keeps delegated work as a real OpenCode child session, so it has the current `pen` session as `parentID` and appears in the built-in subagent inspector. The bundled CLI runtime remains available for explicit recovery and compatibility workflows. See the [runtime guide](https://b-hs.github.io/oh-pen/docs/runtime.html) for the contract and operational limits.
 
 ## Install
 
@@ -124,7 +124,9 @@ The installer supports three assignment modes for every role:
 - **Primary inheritance** uses the primary session model for a selected specialist.
 - **Direct assignment** accepts any OpenCode-connected `provider/model#variant` value supplied by the user.
 
-Assignments are installation defaults, not a permanent restriction. At each new tool-using task, `pen` offers the installed GPT mix, primary-model inheritance, and direct per-role assignment. The GPT defaults use native child agents; inheritance or direct assignment uses the bundled runtime to manage `opencode run --agent <role> --model <provider/model#variant>` in a separate CLI session. `pen` supplies a validated work contract; the runtime records the session, enforces time/output/attempt limits, checks results, and supports cancellation and resume. `pen` integrates the evidence. It reports an unavailable model instead of silently substituting another one.
+Assignments are installation defaults, not a permanent restriction. At each new tool-using task, `pen` offers the installed GPT mix, primary-model inheritance, and direct per-role assignment. The GPT defaults call OpenCode's native `subagent` tool directly. For inheritance or direct assignment, `pen` stages a validated contract with `pen_subagent`, then passes its unchanged `nextInput` to the native `subagent` tool. The plugin switches only the child session model during prompt admission and verifies the child `parentID`, agent, actual assistant model, and result. An unavailable model is reported instead of silently substituted.
+
+If a staged native call fails, retry through `pen_subagent` again. Reusing the native input directly is rejected so a retry cannot fall back to the agent's installed default model.
 
 Installation defaults live on the `model:` line in `~/.config/opencode/agents/<id>.md`. Task-specific choices do not edit those files or the root config. The primary session model is stored separately; a `model:` field inside `agents/pen.md` does not change an active primary session.
 
@@ -132,7 +134,9 @@ Reinstall and upgrade preserve a user-edited subagent `model:` line while refres
 
 ## Execution and recovery
 
-Version 0.2 installs a Bun runtime and JSON schemas alongside the agents. Prepare `docs/task.json` from the [task contract example](docs/pen/runtime.md), using real project paths, acceptance criteria, and your selected model. Run these commands from that project's Git root.
+Version 0.3 installs the OpenCode plugin, a Bun compatibility runtime, and JSON schemas alongside the agents. Normal delegated work uses the plugin and the native child session. Prepare the same validated contract shown in the [runtime guide](docs/pen/runtime.md); `pen_subagent` returns the exact native input, and `subagent` creates or resumes the child.
+
+The compatibility runtime is still available for an explicitly separate CLI session or recovery workflow. Run these commands from that project's Git root.
 
 ```bash
 bun ~/.config/opencode/oh-pencode/runtime.js validate docs/task.json
@@ -186,7 +190,7 @@ One-off facts and material already covered by an existing page are returned to `
 
 - Downloads the bundle, manifest, and listed assets before execution, then verifies every SHA-256 digest.
 - Writes only under `~/.config/opencode/`; there is no per-project install mode.
-- Backs up `opencode.jsonc` and existing managed agents, runtime, and schema files before writing.
+- Backs up `opencode.jsonc` and existing managed agents, plugin, runtime, and schema files before writing.
 - Preserves managed files edited after installation and reports the conflict.
 - Rejects absolute asset paths and paths containing `..`.
 - Accepts only HTTPS or local development paths as asset sources.

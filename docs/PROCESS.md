@@ -1,5 +1,21 @@
 # PROCESS
 
+## 작업: 호출별 모델 subagent를 native child session으로 전환 (2026-09-24)
+
+- [x] a. OpenCode V2 plugin/session 계약과 현재 runtime·installer·verify 경계 확인 — global `plugins/` 자동 로드, native `subagent`의 child `parentID`, prompt hook의 model 전환과 child 조회 계약 확인
+- [x] b. native `subagent` 입력을 예약·검증하고 child prompt admission에서 호출별 모델을 적용하는 plugin과 재개 계약 구현
+- [x] c. 설치·검증·에이전트·사용자 문서를 native child session 동작으로 동기화
+- [x] d. 직접 위험을 덮는 회귀 테스트·타입검사와 실제 OpenCode 등록·child 표시 검증 — 57 tests, typecheck, v0.3.0 14 assets, plugin active, native child parent/model/result 실측 통과
+- [ ] e. 관련 파일만 선별 커밋하고 현재 브랜치를 일반 push
+
+### 실행 계약
+
+- 사용자는 기존 `opencode run` 별도 root session 호출을 OpenCode V2 plugin 기반 child session 호출로 변경하도록 승인했습니다.
+- 이번 작업은 workflow를 사용하지 않고 메인이 직접 수행합니다.
+- 호출별 `agent`·`model` 선택, 역할별 permission, 결과 회수·취소·재개 계약을 보존합니다.
+- 외부 입력은 plugin tool 스키마와 기존 런타임 계약에서 검증하며 셸 문자열 조합으로 전달하지 않습니다.
+- 기준: 사용자 AGENTS 지시, `~/.codex/llm-rules/{ai-process,common,comments,security,git}.md`, OpenCode V2 plugin·session 공식 계약.
+
 ## 작업: 웹사이트·README 최종 정리 (2026-09-22)
 
 - [x] a. 현재 소스·배포 화면 확인 — 문서의 `runtime.md` 링크 404, 중첩 404의 홈 경로 오류, 이전 설치 자산 예시·README 제거 설명 불일치 확인

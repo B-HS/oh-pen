@@ -34,11 +34,13 @@ describe("pen 작업 시작 계약", () => {
     expect(penAsset).not.toContain("매 작업마다 다시 묻지 않는다")
   })
 
-  test("호출별 모델 선택은 CLI 플래그를 사용하고 설치 모델을 바꾸지 않는다", () => {
-    expect(penAsset).toContain("opencode run --agent <agent-id> --model <provider/model#variant>")
+  test("호출별 모델 선택은 native child plugin을 사용하고 설치 모델을 바꾸지 않는다", () => {
+    expect(penAsset).toContain("child prompt admission 단계에서 계약 모델을 child session에 적용")
+    expect(penAsset).toContain("provider에 직접 노출된 native `subagent` 도구")
     expect(penAsset).toContain("사용자 지정 모델을 적용하기 위해 `~/.config/opencode/agents/*.md`")
-    expect(penAsset).toContain("native `subagent` 도구의 자식 세션이 아니므로")
+    expect(penAsset).toContain("`pen_subagent`에 `{ contract, resume: false }`")
     expect(penAsset).not.toContain("해당 agent의 `model:`에 반영한다")
     expect(penAsset).not.toContain("subagent 모델 override는")
+    expect(penAsset).not.toContain("opencode run --agent <agent-id> --model <provider/model#variant>")
   })
 })
