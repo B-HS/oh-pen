@@ -23,6 +23,27 @@ permissions:
     resource: "*"
     effect: deny
   - action: "shell"
+    resource: "pwd"
+    effect: allow
+  - action: "shell"
+    resource: "ls *"
+    effect: allow
+  - action: "shell"
+    resource: "rg *"
+    effect: allow
+  - action: "shell"
+    resource: "cat *"
+    effect: allow
+  - action: "shell"
+    resource: "head *"
+    effect: allow
+  - action: "shell"
+    resource: "tail *"
+    effect: allow
+  - action: "shell"
+    resource: "wc *"
+    effect: allow
+  - action: "shell"
     resource: "git status *"
     effect: allow
   - action: "shell"
@@ -213,6 +234,12 @@ permissions:
     effect: deny
   - action: "shell"
     resource: "*--ext-diff*"
+    effect: deny
+  - action: "shell"
+    resource: "*--pre*"
+    effect: deny
+  - action: "shell"
+    resource: "*>*"
     effect: deny
 ---
 

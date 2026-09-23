@@ -16,6 +16,48 @@ permissions:
   - action: "grep"
     resource: "*"
     effect: allow
+  - action: "shell"
+    resource: "*"
+    effect: deny
+  - action: "shell"
+    resource: "pwd"
+    effect: allow
+  - action: "shell"
+    resource: "ls *"
+    effect: allow
+  - action: "shell"
+    resource: "rg *"
+    effect: allow
+  - action: "shell"
+    resource: "cat *"
+    effect: allow
+  - action: "shell"
+    resource: "head *"
+    effect: allow
+  - action: "shell"
+    resource: "tail *"
+    effect: allow
+  - action: "shell"
+    resource: "wc *"
+    effect: allow
+  - action: "shell"
+    resource: "git status *"
+    effect: allow
+  - action: "shell"
+    resource: "git diff *"
+    effect: allow
+  - action: "shell"
+    resource: "git log *"
+    effect: allow
+  - action: "shell"
+    resource: "git show *"
+    effect: allow
+  - action: "shell"
+    resource: "git ls-files *"
+    effect: allow
+  - action: "shell"
+    resource: "git rev-parse *"
+    effect: allow
   - action: "read"
     resource: "*.env"
     effect: deny
@@ -99,6 +141,18 @@ permissions:
     effect: deny
   - action: "shell"
     resource: "**/secrets/**"
+    effect: deny
+  - action: "shell"
+    resource: "*--pre*"
+    effect: deny
+  - action: "shell"
+    resource: "*--output*"
+    effect: deny
+  - action: "shell"
+    resource: "*--ext-diff*"
+    effect: deny
+  - action: "shell"
+    resource: "*>*"
     effect: deny
 ---
 

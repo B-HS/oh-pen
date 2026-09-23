@@ -240,6 +240,8 @@ global `permissions`는 먼저 적용되고, agent별 규칙이 **뒤에 append*
 
 `"git status *"`는 `git status`와 `git status --short` 모두에 매칭된다. `resource`가 ` *`로 끝나면 인자 없는 명령도 포함한다.
 
+oh-pen의 제한 역할은 `shell "*" deny` 뒤에 `pwd`, 파일 목록·검색·읽기와 Git 읽기 명령만 예외로 허용한다. `shell`은 운영체제 sandbox가 아니므로 `rg --pre`, Git external diff·output, 출력 리다이렉션은 예외 뒤에서 다시 거부한다. 메인 `pen`은 OpenCode 기본 shell 허용을 유지하고 파괴적 명령만 별도 ask·deny로 제한한다.
+
 ### 승인 저장
 
 `ask`에서 **Allow always**를 선택하면 tool이 제안한 패턴이 프로젝트 스코프 `allow` 규칙으로 저장된다. 저장된 규칙은 `deny`를 덮어쓰지 못한다.

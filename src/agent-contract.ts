@@ -50,8 +50,14 @@ export const permissionProbes = (id: string) => {
     if (id === 'pen') return [...common, { action: 'shell', resource: 'git push origin main --force', expected: 'deny' as const }]
     const specialist = [...common, { action: 'subagent', resource: 'sub-pen', expected: 'deny' as const }]
     if (id === 'sub-pen') return [...specialist, { action: 'shell', resource: 'git -C . commit -m test', expected: 'deny' as const }]
-    const readOnly = [...specialist, { action: 'edit', resource: 'src/example.ts', expected: 'deny' as const }]
+    const readOnly = [
+        ...specialist,
+        { action: 'edit', resource: 'src/example.ts', expected: 'deny' as const },
+        { action: 'shell', resource: 'pwd', expected: 'allow' as const },
+        { action: 'shell', resource: 'python -c print(1)', expected: 'deny' as const },
+        { action: 'shell', resource: 'git status', expected: 'allow' as const },
+    ]
     if (id === 'verify-pen') return [...readOnly, { action: 'shell', resource: 'bun -e invalid', expected: 'deny' as const }]
     if (id === 'security-pen') return [...readOnly, { action: 'shell', resource: 'npm audit fix', expected: 'deny' as const }]
-    return [...readOnly, { action: 'shell', resource: 'git status', expected: 'deny' as const }]
+    return readOnly
 }

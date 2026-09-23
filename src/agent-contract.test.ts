@@ -31,6 +31,24 @@ describe('에이전트 권한 계약', () => {
         expect(resolvePermission(permissions, 'shell', 'npm audit --json')).toBe('allow')
         expect(resolvePermission(permissions, 'shell', 'npm audit fix --force')).toBe('deny')
     })
+    test('제한 역할은 조회 shell만 허용한다', async () => {
+        const agentIds = ['research-pen', 'explore-pen', 'doc-pen', 'verify-pen', 'security-pen', 'review-pen'] as const
+        const allowedCommands = ['pwd', 'ls src', 'rg --files', 'cat README.md', 'head README.md', 'tail README.md', 'wc -l README.md', 'git diff --stat']
+        const deniedCommands = [
+            'python -c print(1)',
+            'touch generated.txt',
+            'git add README.md',
+            'rg --pre "rm -rf dist" pattern',
+            'git diff --ext-diff',
+            'git diff --output=result.patch',
+            'cat README.md > copied.md',
+        ]
+        for (const id of agentIds) {
+            const { permissions } = parseAgentFile(await Bun.file(`assets/agents/${id}.md`).text())
+            for (const command of allowedCommands) expect(resolvePermission(permissions, 'shell', command)).toBe('allow')
+            for (const command of deniedCommands) expect(resolvePermission(permissions, 'shell', command)).toBe('deny')
+        }
+    })
     test('중첩 모델 ID와 variant를 보존한다', () => {
         expect(parseModelRef('openrouter/vendor/model#high')).toEqual({ providerID: 'openrouter', id: 'vendor/model', variant: 'high' })
         expect(() => parseModelRef('provider/model\npermissions: allow')).toThrow()

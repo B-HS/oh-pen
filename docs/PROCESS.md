@@ -309,3 +309,25 @@
 - 원격: <https://github.com/B-HS/oh-pen>
 - 배포: <https://b-hs.github.io/oh-pen/>
 - 커밋: `729a53b` feat, `fd2f908` fix, `b7dc4c1` ci, `76a29bf` docs, `01398d8` fix, `3d1a31d` docs, `b53fa75` docs
+
+## 작업: 읽기 전용 subagent shell 권한 복구 (2026-09-24)
+
+- [x] a. OpenCode V2 권한 계약과 현재 asset·설치본을 대조해 `shell` 거부를 재현하고 원인을 확정 — deny-all 뒤 shell 예외 부재, 메인 `pen`은 기본 허용임을 v2.0.15 runtime에서 확인
+- [x] b. 읽기 전용 경계를 유지하면서 조사에 필요한 shell 명령만 허용하고 회귀 검사를 추가 — 조회 허용·우회 차단을 포함한 권한 검사 17건 통과
+- [x] c. 관련 설계·사용 문서를 실제 권한 계약과 동기화 — 메인 기본 허용과 제한 역할 allowlist 차이를 architecture·V2 문서에 반영
+- [ ] d. 위험 비례 검증 후 선별 commit·일반 push 및 설치본 반영 확인 — 52 tests·typecheck·13 assets build·전역 설치 verify 통과, Git 통합 중
+
+### 완료 기준
+
+1. `explore-pen`이 `pwd`, 파일 목록·검색·읽기와 Git 읽기 명령을 실행할 수 있다.
+2. 읽기 전용 subagent의 파일 수정·Git 쓰기·임의 shell 실행은 계속 거부된다.
+3. `pen`의 기존 shell 권한은 축소되지 않으며 메인 agent와 subagent의 차이가 문서에 명시된다.
+4. 설치·검증 경로가 잘못된 shell permission 회귀를 자동 검출한다.
+
+### 검증 근거
+
+- `bun test`: 52 pass, 0 fail.
+- `bun run typecheck`: 성공.
+- `bun run build:site`: v0.2.0 자산 13개와 문서 11페이지 생성.
+- `bun run src/cli.ts verify`: OpenCode v2.0.15의 8개 custom agent 등록·모델·권한·설치 해시 검증 통과.
+- 전역 설치본은 기존 10개 파일을 백업한 뒤 갱신했으며, 제한 역할 6종에서 `pwd`·Git 조회 허용과 임의 Python 실행 거부를 실측했다.
