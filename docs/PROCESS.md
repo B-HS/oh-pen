@@ -315,7 +315,7 @@
 - [x] a. OpenCode V2 권한 계약과 현재 asset·설치본을 대조해 `shell` 거부를 재현하고 원인을 확정 — deny-all 뒤 shell 예외 부재, 메인 `pen`은 기본 허용임을 v2.0.15 runtime에서 확인
 - [x] b. 읽기 전용 경계를 유지하면서 조사에 필요한 shell 명령만 허용하고 회귀 검사를 추가 — 조회 허용·우회 차단을 포함한 권한 검사 17건 통과
 - [x] c. 관련 설계·사용 문서를 실제 권한 계약과 동기화 — 메인 기본 허용과 제한 역할 allowlist 차이를 architecture·V2 문서에 반영
-- [ ] d. 위험 비례 검증 후 선별 commit·일반 push 및 설치본 반영 확인 — 52 tests·typecheck·13 assets build·전역 설치 verify 통과, Git 통합 중
+- [x] d. 위험 비례 검증 후 선별 commit·일반 push 및 설치본 반영 확인 — 52 tests·typecheck·13 assets build·전역 설치 verify 통과, `2f39b4b`를 `origin/main`에 push
 
 ### 완료 기준
 
