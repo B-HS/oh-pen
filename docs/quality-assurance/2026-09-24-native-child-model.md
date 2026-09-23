@@ -45,3 +45,8 @@ OpenCode v2.0.15의 native `subagent`가 child session을 만들고, bundled plu
 - `pen_subagent`는 Code Mode 도구이고 native `subagent`는 provider가 직접 노출하는 도구이므로 두 호출은 서로 다른 model step에서 실행됩니다.
 - plugin은 child의 parent·agent·모델·구조화 결과를 검증하지만 모델이 보고한 셸 출력의 의미 전체를 독립적으로 증명하지는 않습니다. 메인은 중요한 변경에서 실제 diff와 검사 출력을 계속 확인해야 합니다.
 - 호출별 모델은 OpenCode에 연결된 provider/model이어야 하며 사용할 수 없는 모델을 자동 대체하지 않습니다.
+
+## 통합
+
+- 구현 커밋 `2c7f90f`를 `main`에 일반 push했습니다.
+- AI 서명·트레일러와 force push를 사용하지 않았습니다.

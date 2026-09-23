@@ -6,7 +6,7 @@
 - [x] b. native `subagent` 입력을 예약·검증하고 child prompt admission에서 호출별 모델을 적용하는 plugin과 재개 계약 구현
 - [x] c. 설치·검증·에이전트·사용자 문서를 native child session 동작으로 동기화
 - [x] d. 직접 위험을 덮는 회귀 테스트·타입검사와 실제 OpenCode 등록·child 표시 검증 — 57 tests, typecheck, v0.3.0 14 assets, plugin active, native child parent/model/result 실측 통과
-- [ ] e. 관련 파일만 선별 커밋하고 현재 브랜치를 일반 push
+- [x] e. 관련 파일만 선별 커밋하고 현재 브랜치를 일반 push — 구현 커밋 `2c7f90f`, `main` push 완료
 
 ### 실행 계약
 
