@@ -4,7 +4,7 @@
 
 - [x] a. README·랜딩·배포 소스 대조 — README에는 상세 내용이 있으나 상단 탐색이 누락됐고, 랜딩은 모델 문구만 갱신되어 Goal/Todo·Claude Code 호환이 직접 노출되지 않음을 확인
 - [x] b. README 탐색·설치 안내와 랜딩의 v0.4 Goal/Todo·Claude Code 호환 섹션 보강
-- [ ] c. 랜딩 회귀 검사·사이트 빌드·배포 확인 후 관련 파일 선별 commit·일반 push
+- [x] c. 랜딩 회귀 검사·사이트 빌드·배포 확인 후 관련 파일 선별 commit·일반 push — 7 tests, typecheck, v0.4.0 11 pages, 커밋 `8274041`, Pages run `35946220292` 성공·공개 랜딩 반영 확인
 
 ### 실행 계약
 

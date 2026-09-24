@@ -31,3 +31,10 @@
 - Claude provider는 현재 OpenCode에 연결되어 있지 않아 Claude Opus 5.5·Sonnet 5 프로필의 실제 유료 호출은 실행하지 않았습니다. 모델 ID는 Anthropic 공식 모델 문서로 확인했고 installer는 연결되지 않은 모델을 대체하지 않습니다.
 - sidebar의 상태 전이 파서는 회귀 테스트로, TUI plugin 로딩은 실제 기동으로 확인했습니다. 유료 모델을 호출하는 `/goal` 전체 왕복 smoke test는 실행하지 않았습니다.
 - `~/.zshenv` 변경은 새 terminal process부터 적용됩니다. 기존 terminal의 부모 환경은 설치기가 바꿀 수 없습니다.
+
+## README·웹 배포 후속
+
+- README 상단 탐색에 Goal·Claude 호환 섹션을 연결하고 설치 직후 새 terminal이 필요함을 명시했습니다.
+- 랜딩의 이전 `Available in v0.2` 표기를 v0.4로 바로잡고 Goal/Todo sidebar와 Claude Code rule·command 연결을 설명하는 전용 섹션을 추가했습니다.
+- `bun test scripts/build-site.test.ts` 7건, `bun run typecheck`, `bun run build:site`의 v0.4.0 16 assets·11 pages 생성을 통과했습니다.
+- 구현 커밋 `8274041`의 GitHub Pages run `35946220292`가 성공했으며, 공개 랜딩에서 `/goal <objective>`, `CLAUDE.md` 연결, project `AGENTS.md` 비활성화 안내를 확인했습니다.
