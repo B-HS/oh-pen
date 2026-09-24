@@ -23,9 +23,16 @@ describe("install bootstrap", () => {
 describe("pen 작업 시작 계약", () => {
   test("workflow와 모델을 실행 전에 함께 묻는다", () => {
     expect(penAsset).toContain("새 작업마다 실행 전에 아래 두 질문을 한 번에 제시하고 답을 기다린다")
-    expect(penAsset).toContain("설치된 GPT 기본 배정 유지")
+    expect(penAsset).toContain("설치된 Codex 기본 배정 유지")
+    expect(penAsset).toContain("설치된 Claude 기본 배정 유지")
     expect(penAsset).toContain("pen 모델 상속")
     expect(penAsset).toContain("역할별 직접 지정")
+  })
+
+  test("Goal과 Todo를 sidebar 상태로 계속 갱신한다", () => {
+    expect(penAsset).toContain("`/goal <목표>`")
+    expect(penAsset).toContain("`pen_status`로 목표와 전체 Todo 목록")
+    expect(penAsset).toContain("첫 항목만 `in_progress`")
   })
 
   test("답변 전 도구 실행과 자동 workflow 판단을 금지한다", () => {

@@ -1,6 +1,8 @@
 import { z } from 'zod'
-import { join } from 'node:path'
-import { AGENT_IDS, AgentSchema, PLUGIN_ASSET, permissionProbes, resolvePermission, RUNTIME_ASSET } from './agent-contract.ts'
+import { readFile, readlink } from 'node:fs/promises'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
+import { PROJECT_CONFIG_ENVIRONMENT_LINE } from './claude-compat.ts'
+import { AGENT_IDS, AgentSchema, GOAL_COMMAND_ASSET, PLUGIN_ASSET, permissionProbes, resolvePermission, RUNTIME_ASSET, TUI_PLUGIN_ASSET } from './agent-contract.ts'
 import { readConfig, readDefaultAgent, readRootModel } from './config.ts'
 import { exists, readManifest, sha256 } from './fs.ts'
 import type { Manifest } from './fs.ts'
@@ -14,13 +16,14 @@ type VerifyCheck = { name: string; ok: boolean; detail: string }
 
 export const verifyPluginRegistration = (output: string, root: string) => {
     const expectedPath = join(root, PLUGIN_ASSET)
+    const expectedDirectory = dirname(expectedPath)
     const registered = output
         .split('\n')
         .map((line) => line.trim())
         .find((line) => line.startsWith('oh-pencode.child-session '))
     return {
         name: 'plugin active',
-        ok: registered?.includes(expectedPath) === true,
+        ok: registered?.includes(expectedPath) === true || registered?.includes(expectedDirectory) === true,
         detail: registered ?? `기대 경로: ${expectedPath}`,
     }
 }
@@ -69,7 +72,7 @@ export const verifyInstallation = async (input: {
         checks.push({ name: `${id} hidden`, ok: byId.get(id)?.hidden === true, detail: 'runtime hidden=true 확인' })
     }
     for (const file of input.manifest.files) {
-        const isSafe = /^(?:agents\/[a-z0-9-]+\.md|plugins\/oh-pencode\.js|oh-pencode\/(?:runtime\.js|task\.schema\.json|result\.schema\.json))$/.test(
+        const isSafe = /^(?:agents\/[a-z0-9-]+\.md|commands\/goal\.md|plugins\/oh-pencode\/(?:index|tui)\.js|oh-pencode\/(?:runtime\.js|task\.schema\.json|result\.schema\.json))$/.test(
             file.path,
         )
         let isMatch = false
@@ -85,6 +88,29 @@ export const verifyInstallation = async (input: {
     }
     checks.push({ name: 'runtime bundle', ok: input.manifest.files.some((file) => file.path === RUNTIME_ASSET), detail: '실행 도구 설치 기록' })
     checks.push({ name: 'plugin bundle', ok: input.manifest.files.some((file) => file.path === PLUGIN_ASSET), detail: 'native subagent plugin 설치 기록' })
+    checks.push({ name: 'TUI plugin bundle', ok: input.manifest.files.some((file) => file.path === TUI_PLUGIN_ASSET), detail: 'Goal과 Todo sidebar 설치 기록' })
+    checks.push({ name: '/goal command', ok: input.manifest.files.some((file) => file.path === GOAL_COMMAND_ASSET), detail: '세션 goal command 설치 기록' })
+    for (const link of input.manifest.links ?? []) {
+        let isMatch = false
+        try {
+            const target = join(input.root, link.path)
+            const relativePath = relative(input.root, target)
+            const isAllowed = /^(?:AGENTS\.md|commands\/(?:[a-z0-9-]+\/)*[a-z0-9-]+\.md)$/.test(link.path)
+            if (isAllowed && !relativePath.startsWith('..') && !isAbsolute(relativePath))
+                isMatch = resolve(dirname(target), await readlink(target)) === resolve(link.target)
+        } catch {
+            isMatch = false
+        }
+        checks.push({ name: `${link.path} Claude 연결`, ok: isMatch, detail: isMatch ? link.target : '연결 누락 또는 변경' })
+    }
+    if (input.manifest.claudeCompatibility) {
+        const raw = await readFile(input.manifest.claudeCompatibility.shellProfile, 'utf8').catch(() => '')
+        checks.push({
+            name: 'Claude rule only',
+            ok: raw.split('\n').some((line) => line.trim() === PROJECT_CONFIG_ENVIRONMENT_LINE),
+            detail: '프로젝트 AGENTS.md 탐색 비활성화',
+        })
+    }
     if (input.manifest.config.defaultAgent !== undefined)
         checks.push({ name: 'default_agent', ok: input.defaultAgent === input.manifest.config.defaultAgent, detail: '설치 시 선택과 비교' })
     if (input.manifest.config.rootModel !== undefined)

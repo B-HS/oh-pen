@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 import { sha256 } from "./fs.ts"
-import { hasOnlyModelOverride, isValidModelRef, readModelLine, writeModelLine } from "./models.ts"
+import { hasOnlyModelOverride, isValidModelRef, modelProfiles, readModelLine, writeModelLine } from "./models.ts"
 
 const AGENT_WITHOUT_MODEL = `---
 description: test agent
@@ -12,6 +12,12 @@ Test body.
 `
 
 describe("agent 모델 참조", () => {
+  test("Codex와 Claude 기본 프로필을 역할에 맞게 배정한다", () => {
+    expect(modelProfiles.codex.pen).toBe("openai/gpt-6-sol#xhigh")
+    expect(modelProfiles.codex["sub-pen"]).toBe("openai/gpt-6-luna#max")
+    expect(modelProfiles.claude.pen).toBe("anthropic/claude-opus-5-5#high")
+    expect(modelProfiles.claude["sub-pen"]).toBe("anthropic/claude-sonnet-5#xhigh")
+  })
   test("연결 가능한 provider/model 형식을 허용한다", () => {
     expect(isValidModelRef("anthropic/claude-sonnet-4-6#high")).toBe(true)
     expect(isValidModelRef("openrouter/vendor/model#fast")).toBe(true)

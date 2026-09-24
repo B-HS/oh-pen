@@ -2,7 +2,10 @@ import { z } from 'zod'
 
 export const SPECIALIST_IDS = ['sub-pen', 'research-pen', 'explore-pen', 'doc-pen', 'verify-pen', 'security-pen', 'review-pen'] as const
 export const AGENT_IDS = ['pen', ...SPECIALIST_IDS] as const
-export const PLUGIN_ASSET = 'plugins/oh-pencode.js'
+export const PLUGIN_ASSET = 'plugins/oh-pencode/index.js'
+export const TUI_PLUGIN_ASSET = 'plugins/oh-pencode/tui.js'
+export const LEGACY_PLUGIN_ASSET = 'plugins/oh-pencode.js'
+export const GOAL_COMMAND_ASSET = 'commands/goal.md'
 export const RUNTIME_ASSET = 'oh-pencode/runtime.js'
 export const CONTRACT_ASSET = 'oh-pencode/task.schema.json'
 export const RESULT_ASSET = 'oh-pencode/result.schema.json'
@@ -52,12 +55,14 @@ export const permissionProbes = (id: string) => {
         return [
             ...common,
             { action: 'pen_subagent', resource: '*', expected: 'allow' as const },
+            { action: 'pen_status', resource: '*', expected: 'allow' as const },
             { action: 'shell', resource: 'git push origin main --force', expected: 'deny' as const },
         ]
     const specialist = [
         ...common,
         { action: 'subagent', resource: 'sub-pen', expected: 'deny' as const },
         { action: 'pen_subagent', resource: '*', expected: 'deny' as const },
+        { action: 'pen_status', resource: '*', expected: 'deny' as const },
     ]
     if (id === 'sub-pen') return [...specialist, { action: 'shell', resource: 'git -C . commit -m test', expected: 'deny' as const }]
     const readOnly = [

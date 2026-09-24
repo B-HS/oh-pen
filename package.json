@@ -1,6 +1,6 @@
 {
   "name": "oh-pencode",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "pen agent set installer for OpenCode V2",
@@ -19,7 +19,10 @@
   },
   "devDependencies": {
     "@opencode/plugin": "2.0.15",
+    "@opentui/core": "0.5.10",
+    "@opentui/solid": "0.5.10",
     "@types/bun": "^1.4.2",
+    "solid-js": "1.9.15",
     "typescript": "^5.9.3"
   }
 }

@@ -1,11 +1,23 @@
 import { cp, mkdir, rm } from "node:fs/promises"
+import { homedir } from "node:os"
 import { dirname, isAbsolute, join, relative } from "node:path"
 import type { AssetSource } from "./assets.ts"
+import { installClaudeCompatibility } from "./claude-compat.ts"
 import { applyManagedKeys, readConfig, writeConfig, type ConfigChange } from "./config.ts"
 import { exists, listFiles, readManifest, sha256, timestamp, writeManifest, type Manifest } from "./fs.ts"
 import { hasOnlyModelOverride, readModelLine, writeModelLine } from "./models.ts"
 import { configRoot } from "./paths.ts"
-import { AGENT_IDS, CONTRACT_ASSET, PLUGIN_ASSET, RESULT_ASSET, RUNTIME_ASSET, parseAgentFile } from "./agent-contract.ts"
+import {
+  AGENT_IDS,
+  CONTRACT_ASSET,
+  GOAL_COMMAND_ASSET,
+  LEGACY_PLUGIN_ASSET,
+  PLUGIN_ASSET,
+  RESULT_ASSET,
+  RUNTIME_ASSET,
+  TUI_PLUGIN_ASSET,
+  parseAgentFile,
+} from "./agent-contract.ts"
 import type { InstallAnswers } from "./interview.ts"
 
 export type InstallOptions = {
@@ -16,6 +28,8 @@ export type InstallOptions = {
   force: boolean
   skipBackup: boolean
   root?: string
+  claudeRoot?: string
+  shellProfile?: string
 }
 
 export type InstallResult = {
@@ -24,6 +38,7 @@ export type InstallResult = {
   preserved: string[]
   warnings: string[]
   backups: string[]
+  linked: string[]
   configChanges: ConfigChange[]
 }
 
@@ -72,7 +87,7 @@ export const install = async (options: InstallOptions): Promise<InstallResult> =
   const manifestPath = join(root, "oh-pencode", "manifest.json")
   const configurationPath = join(root, "opencode.jsonc")
   const backupsPath = join(root, "oh-pencode", "backup")
-  const result: InstallResult = { wrote: [], skipped: [], preserved: [], warnings: [], backups: [], configChanges: [] }
+  const result: InstallResult = { wrote: [], skipped: [], preserved: [], warnings: [], backups: [], linked: [], configChanges: [] }
 
   const assetPaths = await options.assets.list()
   const allowed = new Set([
@@ -80,6 +95,8 @@ export const install = async (options: InstallOptions): Promise<InstallResult> =
     "agents/builtin/build.md",
     "agents/builtin/plan.md",
     PLUGIN_ASSET,
+    TUI_PLUGIN_ASSET,
+    GOAL_COMMAND_ASSET,
     RUNTIME_ASSET,
     CONTRACT_ASSET,
     RESULT_ASSET,
@@ -112,13 +129,44 @@ export const install = async (options: InstallOptions): Promise<InstallResult> =
     for (const [agent, model] of Object.entries(options.answers.models)) {
       result.wrote.push(`agents/${agent}.md ← model: ${model} (dry-run)`)
     }
+    const compatibility = await installClaudeCompatibility({
+      configRoot: root,
+      claudeRoot: options.claudeRoot ?? join(homedir(), ".claude"),
+      shellProfile: options.shellProfile ?? join(homedir(), ".zshenv"),
+      dryRun: true,
+    })
+    result.linked.push(...compatibility.links.map((link) => `${join(root, link.path)} → ${link.target} (dry-run)`))
+    if (compatibility.wroteShellProfile) result.wrote.push(`${compatibility.shellProfile} (dry-run)`)
+    result.warnings.push(...compatibility.warnings)
     return result
   }
 
   if (!options.skipBackup) {
     const backupTargets = [configurationPath, ...managedAssets.map((path) => targetPathFor(root, path))]
+    const legacyEntry = previous?.files.find((file) => file.path === LEGACY_PLUGIN_ASSET)
+    if (legacyEntry) backupTargets.push(join(root, LEGACY_PLUGIN_ASSET))
+    const compatibilityPreview = await installClaudeCompatibility({
+      configRoot: root,
+      claudeRoot: options.claudeRoot ?? join(homedir(), ".claude"),
+      shellProfile: options.shellProfile ?? join(homedir(), ".zshenv"),
+      dryRun: true,
+    })
+    if (compatibilityPreview.wroteShellProfile) backupTargets.push(compatibilityPreview.shellProfile)
     for (const target of backupTargets) {
       if (await backupFile(target, backupRoot, root)) result.backups.push(target)
+    }
+  }
+
+  const legacyEntry = previous?.files.find((file) => file.path === LEGACY_PLUGIN_ASSET)
+  const legacyTarget = join(root, LEGACY_PLUGIN_ASSET)
+  if (legacyEntry && (await exists(legacyTarget))) {
+    const legacyContent = await Bun.file(legacyTarget).text()
+    if (sha256(legacyContent) === legacyEntry.sha256 || options.force) {
+      await rm(legacyTarget, { force: true })
+      result.wrote.push(`${legacyTarget} 제거`)
+    } else {
+      result.preserved.push(legacyTarget)
+      result.warnings.push(`${legacyTarget} 는 설치 후 수정되어 기존 plugin을 보존합니다.`)
     }
   }
 
@@ -180,7 +228,16 @@ export const install = async (options: InstallOptions): Promise<InstallResult> =
   )
 
   const desiredDefaultAgent = options.answers.adoptDefaultAgent ? "pen" : undefined
-  const desiredRootModel = options.answers.rootModel
+  const shouldPreserveCurrentRootModel =
+    options.answers.preserveCurrentRootModel &&
+    options.answers.currentRootModel !== undefined &&
+    previous?.config.rootModel !== options.answers.currentRootModel &&
+    !options.force
+  const desiredRootModel = shouldPreserveCurrentRootModel ? options.answers.currentRootModel : options.answers.rootModel
+  if (shouldPreserveCurrentRootModel) {
+    result.preserved.push(`${configurationPath} model`)
+    result.warnings.push(`${configurationPath} 의 사용자 지정 root model을 보존합니다.`)
+  }
   const { next: nextConfig, changes } = applyManagedKeys(currentConfig, {
     defaultAgent: desiredDefaultAgent,
     rootModel: desiredRootModel,
@@ -192,11 +249,33 @@ export const install = async (options: InstallOptions): Promise<InstallResult> =
     result.warnings.push(configRewriteWarning(backupRoot))
   }
 
+  const compatibility = await installClaudeCompatibility({
+    configRoot: root,
+    claudeRoot: options.claudeRoot ?? join(homedir(), ".claude"),
+    shellProfile: options.shellProfile ?? join(homedir(), ".zshenv"),
+    dryRun: false,
+  })
+  result.linked.push(...compatibility.links.map((link) => `${join(root, link.path)} → ${link.target}`))
+  result.warnings.push(...compatibility.warnings)
+  if (compatibility.wroteShellProfile) result.wrote.push(compatibility.shellProfile)
+
+  const previousProjectConfigLine =
+    compatibility.previousProjectConfigLine ?? previous?.claudeCompatibility?.previousProjectConfigLine
+  const hasClaudeRule = compatibility.links.some((link) => link.path === "AGENTS.md")
   const manifest: Manifest = {
     version: options.version,
     installedAt: new Date().toISOString(),
     models: installedModels,
     files,
+    links: compatibility.links,
+    ...(hasClaudeRule
+      ? {
+          claudeCompatibility: {
+            shellProfile: compatibility.shellProfile,
+            ...(previousProjectConfigLine ? { previousProjectConfigLine } : {}),
+          },
+        }
+      : {}),
     config: {
       ...(previous?.config?.defaultAgent ? { defaultAgent: previous.config.defaultAgent } : {}),
       ...(previous?.config?.rootModel ? { rootModel: previous.config.rootModel } : {}),

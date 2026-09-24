@@ -14,6 +14,7 @@ import { SessionIdSchema, TaskContractSchema, TaskResultSchema, validateResult }
 import type { TaskContract } from './runtime-contract.ts'
 import { readSessionResult } from './runtime-result.ts'
 import { digest } from './runtime-state.ts'
+import { PenStatusInputSchema } from './opencode-plugin-status.ts'
 
 export const PluginTaskInputSchema = z.strictObject({
     contract: TaskContractSchema,
@@ -41,6 +42,7 @@ type PendingTask = {
 }
 
 const storageKey = (taskId: string) => `native-task:${taskId}`
+const statusStorageKey = (sessionId: string) => `pen-status:${sessionId}`
 
 const validateAgent = async (context: Context, task: TaskContract) => {
     const response = z.object({ data: AgentSchema }).parse(await context.agent.get({ agentID: task.agent }))
@@ -113,6 +115,37 @@ export default Plugin.define({
                         metadata: { taskId: contract.taskId, agent: contract.agent, model: contract.model },
                     }
                 },
+            })
+            editor.add({
+                name: 'pen_status',
+                description: 'Replace the current pen session goal and complete Todo list for durable guidance and live sidebar display.',
+                input: PenStatusInputSchema,
+                execute: async (input, execution) => {
+                    const status = PenStatusInputSchema.parse(input)
+                    const sessionId = SessionIdSchema.parse(execution.sessionID)
+                    await context.storage.set(statusStorageKey(sessionId), status)
+                    await execution.progress({ status: 'Goal과 Todo 상태 갱신 완료' })
+                    return {
+                        content: JSON.stringify(status),
+                        metadata: {
+                            goal: status.goal,
+                            completed: status.todos.filter((todo) => todo.status === 'completed').length,
+                            total: status.todos.length,
+                        },
+                    }
+                },
+            })
+        })
+        const contextRegistration = await context.session.hook('context', async (event) => {
+            const stored = await context.storage.get(statusStorageKey(event.sessionID))
+            const status = PenStatusInputSchema.safeParse(stored)
+            if (!status.success) return
+            event.system.push({
+                type: 'text',
+                text: [
+                    'Current pen session goal and Todo state. Keep this goal until the user changes it and update pen_status after each transition.',
+                    JSON.stringify(status.data),
+                ].join('\n'),
             })
         })
         const promptRegistration = await context.session.hook('prompt', async (event) => {
@@ -189,6 +222,7 @@ export default Plugin.define({
                 afterRegistration.dispose(),
                 beforeRegistration.dispose(),
                 promptRegistration.dispose(),
+                contextRegistration.dispose(),
                 toolRegistration.dispose(),
             ])
         }

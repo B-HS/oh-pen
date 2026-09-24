@@ -18,17 +18,21 @@ oh-pencode installs `pen` as the single primary OpenCode V2 agent and hides the 
 | --- | --- |
 | Primary agent | `pen` |
 | Specialists | `sub-pen`, `research-pen`, `explore-pen`, `doc-pen`, `verify-pen`, `security-pen`, `review-pen` |
-| Models | Convention defaults, primary inheritance, or any connected `provider/model#variant` |
+| Models | Codex defaults, Claude defaults, primary inheritance, or any connected `provider/model#variant` |
+| Session status | `/goal`, durable Todo state, and live right-sidebar display |
+| Rules and commands | Claude Code `CLAUDE.md` and command directories linked into OpenCode V2 |
 | Delivery | Verify → selective staging → commit → normal push |
 | Install target | Global `~/.config/opencode/` only |
 | Integrity | SHA-256 verification before installer execution |
 
-## What's included in v0.3
+## What's included in v0.4
 
 - **Eight agents with clear roles:** one primary, seven specialists, and a new read-only `review-pen` for correctness and regressions.
 - **Validated delegation:** explicit file ownership, completion criteria, required checks, and a shared DONE/PARTIAL/BLOCKED result format.
 - **Native child sessions with per-call models:** a V2 plugin stages the contract, applies the selected model before child prompt admission, and validates the native result without editing installed model settings.
 - **Reusable evidence:** research tied to source versions, file hashes, and expiry, with observed usage and completion metrics.
+- **Goal and Todo sidebar:** `/goal` records one durable session objective while `pen_status` keeps the right sidebar current after every transition.
+- **Claude Code compatibility:** the installer links global Claude rules and commands into the V2-native OpenCode paths instead of relying on a fallback that V2 does not implement.
 
 The plugin keeps delegated work as a real OpenCode child session, so it has the current `pen` session as `parentID` and appears in the built-in subagent inspector. The bundled CLI runtime remains available for explicit recovery and compatibility workflows. See the [runtime guide](https://b-hs.github.io/oh-pen/docs/runtime.html) for the contract and operational limits.
 
@@ -48,10 +52,16 @@ Preview the exact plan without changing files:
 curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- --dry-run
 ```
 
-Use convention model defaults without the interview:
+Use the Codex model profile without the interview:
 
 ```bash
 curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- --no-interview
+```
+
+Use the Claude model profile instead:
+
+```bash
+curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- --no-interview --models claude
 ```
 
 After installation, run `verify` below, open OpenCode in your project, and select `pen` if it is not already the default. Give it your task and answer the workflow/model choices. Existing non-empty default-agent and root-model settings are preserved in non-interactive mode.
@@ -78,9 +88,9 @@ Uninstall does not restore an entire earlier configuration from backup. Before a
 Before a new tool-using task begins, `pen` asks once for both choices:
 
 1. Use the multi-agent workflow or let `pen` work directly.
-2. Keep the installed GPT role defaults, inherit the primary model, or assign connected models per role.
+2. Keep the installed Codex or Claude role defaults, inherit the primary model, or assign connected models per role.
 
-The installed Sol, Terra, and Luna assignment remains the recommended default. After the answer, routine delivery proceeds without repeated approval prompts.
+The Codex profile uses GPT-6 Sol xhigh for `pen` and GPT-6 Luna max for every specialist. The Claude profile uses Claude Opus 5.5 high for `pen` and Claude Sonnet 5 xhigh for every specialist. After the answer, routine delivery proceeds without repeated approval prompts.
 
 ```mermaid
 flowchart LR
@@ -118,13 +128,14 @@ Each specialist is intentionally narrower than `pen`. Subagents do not commit, p
 
 ## Model assignment
 
-The installer supports three assignment modes for every role:
+The installer supports four assignment modes for every role:
 
-- **Convention defaults** provide a ready-to-run model mix.
+- **Codex defaults:** `pen` uses `openai/gpt-6-sol#xhigh`; every specialist uses `openai/gpt-6-luna#max`.
+- **Claude defaults:** `pen` uses `anthropic/claude-opus-5-5#high`; every specialist uses `anthropic/claude-sonnet-5#xhigh`.
 - **Primary inheritance** uses the primary session model for a selected specialist.
 - **Direct assignment** accepts any OpenCode-connected `provider/model#variant` value supplied by the user.
 
-Assignments are installation defaults, not a permanent restriction. At each new tool-using task, `pen` offers the installed GPT mix, primary-model inheritance, and direct per-role assignment. The GPT defaults call OpenCode's native `subagent` tool directly. For inheritance or direct assignment, `pen` stages a validated contract with `pen_subagent`, then passes its unchanged `nextInput` to the native `subagent` tool. The plugin switches only the child session model during prompt admission and verifies the child `parentID`, agent, actual assistant model, and result. An unavailable model is reported instead of silently substituted.
+Assignments are installation defaults, not a permanent restriction. At each new tool-using task, `pen` offers the installed Codex and Claude profiles, primary-model inheritance, and direct per-role assignment. Installed profiles call OpenCode's native `subagent` tool directly. For inheritance or direct assignment, `pen` stages a validated contract with `pen_subagent`, then passes its unchanged `nextInput` to the native `subagent` tool. The plugin switches only the child session model during prompt admission and verifies the child `parentID`, agent, actual assistant model, and result. An unavailable model is reported instead of silently substituted.
 
 If a staged native call fails, retry through `pen_subagent` again. Reusing the native input directly is rejected so a retry cannot fall back to the agent's installed default model.
 
@@ -132,9 +143,22 @@ Installation defaults live on the `model:` line in `~/.config/opencode/agents/<i
 
 Reinstall and upgrade preserve a user-edited subagent `model:` line while refreshing managed prompts and permissions. Other manual prompt edits remain untouched unless `--force` is explicitly used.
 
+## Goal, Todo, and Claude Code compatibility
+
+Run `/goal <objective>` in the OpenCode TUI to set a durable session objective. `pen` writes the full task list through `pen_status`, keeps at most one item active, and replaces the state after each transition. The bundled TUI plugin reads the latest tool state reactively and appends Goal and Todo sections to OpenCode's right sidebar.
+
+OpenCode V2 does not fall back to `CLAUDE.md` or `.claude/commands`. The installer therefore creates these live links:
+
+```text
+~/.config/opencode/AGENTS.md          -> ~/.claude/CLAUDE.md
+~/.config/opencode/commands/<entry>   -> ~/.claude/commands/<entry>
+```
+
+The managed `/goal` command remains an OpenCode command beside those links. Nested Claude commands keep their paths, so `~/.claude/commands/llm-rules/verify.md` appears as `/llm-rules/verify`. The installer also adds `OPENCODE_DISABLE_PROJECT_CONFIG=1` to `~/.zshenv`, which makes OpenCode load the linked global Claude rule without adding project `AGENTS.md` files. Start a new terminal and a new OpenCode process after installation.
+
 ## Execution and recovery
 
-Version 0.3 installs the OpenCode plugin, a Bun compatibility runtime, and JSON schemas alongside the agents. Normal delegated work uses the plugin and the native child session. Prepare the same validated contract shown in the [runtime guide](docs/pen/runtime.md); `pen_subagent` returns the exact native input, and `subagent` creates or resumes the child.
+Version 0.4 installs a server and TUI plugin pair, a Bun compatibility runtime, `/goal`, and JSON schemas alongside the agents. Normal delegated work uses the plugin and the native child session. Prepare the same validated contract shown in the [runtime guide](docs/pen/runtime.md); `pen_subagent` returns the exact native input, and `subagent` creates or resumes the child.
 
 The compatibility runtime is still available for an explicitly separate CLI session or recovery workflow. Run these commands from that project's Git root.
 
@@ -189,7 +213,7 @@ One-off facts and material already covered by an existing page are returned to `
 ## Install safety
 
 - Downloads the bundle, manifest, and listed assets before execution, then verifies every SHA-256 digest.
-- Writes only under `~/.config/opencode/`; there is no per-project install mode.
+- Writes managed OpenCode files under `~/.config/opencode/`, links existing `~/.claude` rule and command sources, and manages one environment line in `~/.zshenv`; there is no per-project install mode.
 - Backs up `opencode.jsonc` and existing managed agents, plugin, runtime, and schema files before writing.
 - Preserves managed files edited after installation and reports the conflict.
 - Rejects absolute asset paths and paths containing `..`.

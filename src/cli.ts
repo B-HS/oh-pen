@@ -5,7 +5,7 @@ import { readConfig, readDefaultAgent, readRootModel } from "./config.ts"
 import { exists } from "./fs.ts"
 import { install } from "./install.ts"
 import { runInterview, type InstallAnswers } from "./interview.ts"
-import { conventionModels } from "./models.ts"
+import { conventionModels, modelProfiles, type ModelMode } from "./models.ts"
 import { configFile } from "./paths.ts"
 import { uninstall } from "./uninstall.ts"
 import { runVerify } from "./verify.ts"
@@ -68,7 +68,7 @@ const printHelp = () => {
       "  --force            사용자 수정 파일도 덮어씀",
       "  --no-interview     기본값으로 진행",
       "  --no-backup        백업 생략",
-      "  --models <mode>    convention | inherit",
+      "  --models <mode>    codex | claude | inherit",
       "  --help             도움말",
     ].join("\n"),
   )
@@ -125,15 +125,19 @@ const printResult = (label: string, lines: string[], warnings: string[] = []) =>
 }
 
 const noInterviewAnswers = (flags: Flags, context: { defaultAgent: string | undefined; rootModel: string | undefined }): InstallAnswers => {
-  const mode = flags.models === "inherit" ? "inherit" : "convention"
+  const inferredMode = context.rootModel?.startsWith("anthropic/") ? "claude" : "codex"
+  const requestedMode = flags.models === "convention" ? "codex" : flags.models ?? inferredMode
+  const mode: ModelMode = requestedMode === "claude" || requestedMode === "inherit" ? requestedMode : "codex"
+  const profile = mode === "codex" || mode === "claude" ? modelProfiles[mode] : undefined
   return {
     modelMode: mode,
-    models: mode === "convention" ? { ...conventionModels } : {},
-    rootModel: context.rootModel ?? conventionModels.pen,
+    models: profile ? { ...profile } : {},
+    rootModel: profile?.pen ?? context.rootModel ?? conventionModels.pen,
     hideBuiltins: true,
     adoptDefaultAgent: true,
     currentDefaultAgent: context.defaultAgent,
     currentRootModel: context.rootModel,
+    preserveCurrentRootModel: true,
   }
 }
 
@@ -195,6 +199,7 @@ const main = async () => {
       ...result.wrote.map((path) => `쓰기: ${path}`),
       ...result.skipped.map((path) => `건너뜀: ${path}`),
       ...result.preserved.map((path) => `보존: ${path}`),
+      ...result.linked.map((path) => `연결: ${path}`),
       ...result.configChanges.map(
         (change) => `설정: ${change.key} ${change.from ?? "(없음)"} → ${change.to ?? "(제거)"}`,
       ),

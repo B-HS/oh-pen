@@ -2,7 +2,7 @@
 
 ## 적용 범위
 
-v0.3.0은 메인 `pen`과 전문 에이전트 7종, OpenCode V2 plugin, 계약 스키마와 Bun 호환 실행 도구를 함께 설치합니다. 작업별 상속·직접 모델 지정은 `pen_subagent`가 계약을 준비하고 OpenCode의 native `subagent`가 실제 child session을 만드는 방식입니다. plugin은 child prompt admission 전에 선택 모델을 적용하며 설치된 모델·root 설정을 변경하지 않습니다.
+v0.4.0은 메인 `pen`과 전문 에이전트 7종, OpenCode V2 server·TUI plugin, `/goal`, 계약 스키마와 Bun 호환 실행 도구를 함께 설치합니다. 작업별 상속·직접 모델 지정은 `pen_subagent`가 계약을 준비하고 OpenCode의 native `subagent`가 실제 child session을 만드는 방식입니다. plugin은 child prompt admission 전에 선택 모델을 적용하며 설치된 모델·root 설정을 변경하지 않습니다.
 
 실행 전에 사용자는 기존처럼 workflow와 모델 방식을 선택합니다. 전문 에이전트는 `pen_subagent`와 중첩 `subagent`를 사용할 수 없으며 메인 `pen`만 위임 계약을 준비합니다.
 
@@ -11,7 +11,9 @@ v0.3.0은 메인 `pen`과 전문 에이전트 7종, OpenCode V2 plugin, 계약 �
 | 경로 | 역할 |
 | --- | --- |
 | `~/.config/opencode/agents/review-pen.md` | 일반 동작·회귀·설계·컨벤션 읽기 전용 리뷰 |
-| `~/.config/opencode/plugins/oh-pencode.js` | native child의 호출별 모델 적용·입력/결과 검증 |
+| `~/.config/opencode/plugins/oh-pencode/index.js` | native child의 호출별 모델 적용·입력/결과 검증, Goal·Todo 상태 저장 |
+| `~/.config/opencode/plugins/oh-pencode/tui.js` | 최신 Goal·Todo를 우측 sidebar에 반응형 표시 |
+| `~/.config/opencode/commands/goal.md` | `/goal`로 세션 목표와 최초 Todo 상태 설정 |
 | `~/.config/opencode/oh-pencode/runtime.js` | 별도 CLI 호환 실행·상태·취소·재개·조사 근거 관리 |
 | `~/.config/opencode/oh-pencode/task.schema.json` | 작업 입력 JSON Schema |
 | `~/.config/opencode/oh-pencode/result.schema.json` | 전문 에이전트 결과 JSON Schema |
@@ -27,7 +29,7 @@ v0.3.0은 메인 `pen`과 전문 에이전트 7종, OpenCode V2 plugin, 계약 �
   "version": 1,
   "taskId": "locate-validation",
   "agent": "explore-pen",
-  "model": "openai/gpt-5.6-luna#low",
+  "model": "openai/gpt-6-luna#max",
   "goal": "입력 검증의 정의와 호출자를 찾습니다.",
   "acceptanceCriteria": ["검증 정의와 호출자 경로·라인을 제시합니다."],
   "context": ["현재 프로젝트의 입력 검증 위치를 확인하는 읽기 전용 작업입니다."],

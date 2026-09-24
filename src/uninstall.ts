@@ -1,5 +1,7 @@
-import { rm } from "node:fs/promises"
-import { isAbsolute, join, relative } from "node:path"
+import { lstat, readFile, readlink, rm } from "node:fs/promises"
+import { homedir } from "node:os"
+import { dirname, isAbsolute, join, relative, resolve } from "node:path"
+import { PROJECT_CONFIG_ENVIRONMENT_LINE } from "./claude-compat.ts"
 import { readConfig, revertManagedKeys, writeConfig } from "./config.ts"
 import { exists, readManifest, removeIfEmpty } from "./fs.ts"
 import { agentsDir, backupDir, configFile, configRoot, managedDir } from "./paths.ts"
@@ -53,6 +55,45 @@ export const uninstall = async (options: { dryRun: boolean; force: boolean }): P
     result.removed.push(target)
   }
 
+  for (const link of manifest.links ?? []) {
+    const target = containedTarget(root, link.path)
+    if (target === undefined) {
+      result.warnings.push(`manifest의 연결 경로가 설치 대상 밖이라 건너뜁니다: ${link.path}`)
+      continue
+    }
+    try {
+      const info = await lstat(target)
+      const isManagedLink = info.isSymbolicLink() && resolve(dirname(target), await readlink(target)) === resolve(link.target)
+      if (!isManagedLink && !options.force) {
+        result.preserved.push(target)
+        continue
+      }
+      if (options.dryRun) result.removed.push(`${target} (dry-run)`)
+      else {
+        await rm(target, { recursive: info.isDirectory(), force: true })
+        result.removed.push(target)
+      }
+    } catch {
+      continue
+    }
+  }
+
+  const compatibility = manifest.claudeCompatibility
+  if (compatibility?.shellProfile === join(homedir(), ".zshenv") && (await exists(compatibility.shellProfile))) {
+    const raw = await readFile(compatibility.shellProfile, "utf8")
+    const lines = raw.split("\n")
+    const index = lines.findIndex((line) => line.trim() === PROJECT_CONFIG_ENVIRONMENT_LINE)
+    if (index !== -1) {
+      if (compatibility.previousProjectConfigLine) lines[index] = compatibility.previousProjectConfigLine
+      else lines.splice(index, 1)
+      if (options.dryRun) result.removed.push(`${compatibility.shellProfile} project config 환경 설정 (dry-run)`)
+      else {
+        await Bun.write(compatibility.shellProfile, lines.join("\n"))
+        result.removed.push(`${compatibility.shellProfile} project config 환경 설정`)
+      }
+    }
+  }
+
   const revertTargets: { defaultAgent?: string; rootModel?: string } = {}
   if (manifest.config.defaultAgent !== undefined) revertTargets.defaultAgent = manifest.config.defaultAgent
   if (manifest.config.rootModel !== undefined) revertTargets.rootModel = manifest.config.rootModel
@@ -81,6 +122,9 @@ export const uninstall = async (options: { dryRun: boolean; force: boolean }): P
   // 백업은 `--restore`를 위해 남긴다.
   if (!options.dryRun) {
     await removeIfEmpty(agentsDir())
+    await removeIfEmpty(join(root, "plugins", "oh-pencode"))
+    await removeIfEmpty(join(root, "plugins"))
+    await removeIfEmpty(join(root, "commands"))
   }
 
   return result

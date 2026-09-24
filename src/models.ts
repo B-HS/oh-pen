@@ -1,20 +1,34 @@
 import { sha256 } from "./fs.ts"
 import { AGENT_IDS, ModelRefSchema } from "./agent-contract.ts"
 
-export const conventionModels = {
-  pen: "openai/gpt-5.6-sol#high",
-  "sub-pen": "openai/gpt-5.6-terra#medium",
-  "research-pen": "openai/gpt-5.6-luna#medium",
-  "explore-pen": "openai/gpt-5.6-luna#low",
-  "doc-pen": "openai/gpt-5.6-luna#high",
-  "verify-pen": "openai/gpt-5.6-luna#medium",
-  "security-pen": "openai/gpt-5.6-luna#high",
-  "review-pen": "openai/gpt-5.6-terra#high",
-} as const satisfies Record<(typeof AGENT_IDS)[number], string>
+export const modelProfiles = {
+  codex: {
+    pen: "openai/gpt-6-sol#xhigh",
+    "sub-pen": "openai/gpt-6-luna#max",
+    "research-pen": "openai/gpt-6-luna#max",
+    "explore-pen": "openai/gpt-6-luna#max",
+    "doc-pen": "openai/gpt-6-luna#max",
+    "verify-pen": "openai/gpt-6-luna#max",
+    "security-pen": "openai/gpt-6-luna#max",
+    "review-pen": "openai/gpt-6-luna#max",
+  },
+  claude: {
+    pen: "anthropic/claude-opus-5-5#high",
+    "sub-pen": "anthropic/claude-sonnet-5#xhigh",
+    "research-pen": "anthropic/claude-sonnet-5#xhigh",
+    "explore-pen": "anthropic/claude-sonnet-5#xhigh",
+    "doc-pen": "anthropic/claude-sonnet-5#xhigh",
+    "verify-pen": "anthropic/claude-sonnet-5#xhigh",
+    "security-pen": "anthropic/claude-sonnet-5#xhigh",
+    "review-pen": "anthropic/claude-sonnet-5#xhigh",
+  },
+} as const satisfies Record<'codex' | 'claude', Record<(typeof AGENT_IDS)[number], string>>
+
+export const conventionModels = modelProfiles.codex
 
 export type AgentModels = Record<string, string>
 
-export type ModelMode = "convention" | "inherit" | "custom"
+export type ModelMode = keyof typeof modelProfiles | "inherit" | "custom"
 
 export const isValidModelRef = (value: string) => {
   return ModelRefSchema.safeParse(value).success

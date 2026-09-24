@@ -8,9 +8,17 @@ export const ManifestSchema = z.object({
   version: z.string(), installedAt: z.string(), models: z.record(z.string(), ModelRefSchema),
   files: z.array(z.object({ path: z.string(), sha256: z.string(), originSha256: z.string() })),
   config: z.object({ defaultAgent: z.string().optional(), rootModel: z.string().optional() }),
+  links: z.array(z.object({ path: z.string(), target: z.string() })).optional(),
+  claudeCompatibility: z
+    .object({
+      shellProfile: z.string(),
+      previousProjectConfigLine: z.string().optional(),
+    })
+    .optional(),
 })
 export type Manifest = z.infer<typeof ManifestSchema>
 export type ManagedFile = Manifest["files"][number]
+export type ManagedLink = NonNullable<Manifest['links']>[number]
 
 export const sha256 = (data: string) => createHash("sha256").update(data).digest("hex")
 

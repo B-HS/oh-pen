@@ -151,15 +151,16 @@ ${specialists
 <section class="section" aria-labelledby="models-title">
   <div class="section-heading">
     <div><p class="section-kicker">Configuration</p><h2 class="section-title" id="models-title">Use the model mix that fits your work.</h2></div>
-    <p class="section-lead">Convention defaults are a starting point, not a lock-in. Every role can inherit the primary model or use any provider, model, and variant already connected to OpenCode.</p>
+    <p class="section-lead">Codex and Claude profiles are starting points, not a lock-in. Every role can inherit the primary model or use any provider, model, and variant already connected to OpenCode.</p>
   </div>
   <div class="split-panel">
     <div>
       <span class="panel-icon">${icon("list")}</span>
       <h3>Per-role model assignment</h3>
-      <p>Installation sets the recommended GPT defaults. Task-specific inheritance or per-role models run with CLI flags, without changing installed agent files.</p>
+      <p>Choose GPT-6 Sol with Luna specialists, or Claude Opus 5.5 with Sonnet 5 specialists. Task-specific inheritance and direct models do not rewrite installed agent files.</p>
       ${checkItems([
-          "Convention defaults for a ready-to-run setup",
+          "Codex: Sol xhigh for pen, Luna max for specialists",
+          "Claude: Opus 5.5 high for pen, Sonnet 5 xhigh for specialists",
           "Primary-model inheritance via a per-run model flag",
           "Direct provider/model#variant input without config edits",
       ])}

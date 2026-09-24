@@ -13,6 +13,9 @@ permissions:
   - action: "pen_subagent"
     resource: "*"
     effect: deny
+  - action: "pen_status"
+    resource: "*"
+    effect: deny
   - action: "shell"
     resource: "git add *"
     effect: deny

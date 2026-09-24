@@ -1,5 +1,21 @@
 # PROCESS
 
+## 작업: 모델 프로필·Claude 설정·Goal/Todo TUI 통합 (2026-09-24)
+
+- [x] a. OpenCode V2 공식 계약과 설치본 확인 — V2는 `CLAUDE.md`·`.claude/commands`를 자동 fallback하지 않으며 TUI plugin의 `sidebar.content` 확장은 지원함을 확인
+- [x] b. Claude/Codex 계열 기본 모델 프로필과 기존 관리 모델의 안전한 업그레이드 구현 — Codex Sol xhigh/Luna max, Claude Opus 5.5 high/Sonnet 5 xhigh, 사용자 override 보존
+- [x] c. Claude Code 전역 rule·command 연결, `/goal`, 세션 Todo tool과 우측 사이드바 실시간 표시 구현 — symlink·공식 project instruction 비활성화·server/TUI plugin 적용
+- [x] d. 설치·해시·권한·TUI·마이그레이션 회귀 검사와 실제 OpenCode 등록 검증 — 64 tests, typecheck, v0.4.0 16 assets, verify·command registry·TUI 기동 통과
+- [ ] e. 사용자 전역 설치 갱신, 관련 파일 선별 commit·일반 push
+
+### 실행 계약
+
+- 사용자는 이번 작업에서 workflow와 subagent를 사용하지 않도록 지정했으며 메인이 직접 수행합니다.
+- Claude 계열은 main을 `claude-opus-5-5#high`, 나머지를 `claude-sonnet-5#xhigh`로, Codex 계열은 main을 `gpt-6-sol#xhigh`, 나머지를 `gpt-6-luna#max`로 배정합니다.
+- OpenCode V2가 읽는 전역 rule·command 경로를 Claude Code 설정의 연결점으로 만들고, 인증·키·`.env`는 읽거나 수정하지 않습니다.
+- `/goal`은 세션 목표를 고정하고 Todo 상태를 갱신하며, 우측 사이드바는 해당 세션의 상태를 반응형으로 표시합니다.
+- 기준: 사용자 AGENTS 지시, `~/.codex/llm-rules/{ai-process,common,comments,security,git}.md`, OpenCode V2 instructions·commands·TUI plugin 공식 계약.
+
 ## 작업: 호출별 모델 subagent를 native child session으로 전환 (2026-09-24)
 
 - [x] a. OpenCode V2 plugin/session 계약과 현재 runtime·installer·verify 경계 확인 — global `plugins/` 자동 로드, native `subagent`의 child `parentID`, prompt hook의 model 전환과 child 조회 계약 확인

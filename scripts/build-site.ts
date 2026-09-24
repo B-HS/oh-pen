@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { AGENT_IDS, CONTRACT_ASSET, PLUGIN_ASSET, RESULT_ASSET, RUNTIME_ASSET, parseAgentFile, permissionProbes, resolvePermission } from "../src/agent-contract.ts"
+import { AGENT_IDS, CONTRACT_ASSET, PLUGIN_ASSET, RESULT_ASSET, RUNTIME_ASSET, TUI_PLUGIN_ASSET, parseAgentFile, permissionProbes, resolvePermission } from "../src/agent-contract.ts"
 import { TaskContractSchema, TaskResultSchema } from "../src/runtime-contract.ts"
 import { cp, mkdir, rm } from "node:fs/promises"
 import { join } from "node:path"
@@ -206,9 +206,19 @@ const main = async () => {
   const runtime = await Bun.build({ entrypoints: [join(root, "src", "runtime-cli.ts")], target: "bun", format: "esm", outdir: join(distAssets, "oh-pencode"), naming: "runtime.js" })
   if (!runtime.success) throw new Error("runtime 번들 생성 실패")
   if (!(await exists(join(distAssets, RUNTIME_ASSET)))) throw new Error("runtime 번들 누락")
-  const plugin = await Bun.build({ entrypoints: [join(root, "src", "opencode-plugin.ts")], target: "bun", format: "esm", outdir: join(distAssets, "plugins"), naming: "oh-pencode.js" })
+  const plugin = await Bun.build({ entrypoints: [join(root, "src", "opencode-plugin.ts")], target: "bun", format: "esm", outdir: join(distAssets, "plugins", "oh-pencode"), naming: "index.js" })
   if (!plugin.success) throw new Error("plugin 번들 생성 실패")
   if (!(await exists(join(distAssets, PLUGIN_ASSET)))) throw new Error("plugin 번들 누락")
+  const tuiPlugin = await Bun.build({
+    entrypoints: [join(root, "src", "opencode-plugin-tui.tsx")],
+    target: "bun",
+    format: "esm",
+    outdir: join(distAssets, "plugins", "oh-pencode"),
+    naming: "tui.js",
+    external: ["@opencode/plugin/tui", "@opentui/core", "@opentui/solid", "solid-js"],
+  })
+  if (!tuiPlugin.success) throw new Error("TUI plugin 번들 생성 실패")
+  if (!(await exists(join(distAssets, TUI_PLUGIN_ASSET)))) throw new Error("TUI plugin 번들 누락")
   await Bun.write(join(distAssets, CONTRACT_ASSET), JSON.stringify(z.toJSONSchema(TaskContractSchema), null, 2))
   await Bun.write(join(distAssets, RESULT_ASSET), JSON.stringify(z.toJSONSchema(TaskResultSchema), null, 2))
   await buildInstallScript(version)

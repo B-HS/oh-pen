@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from 'bun:test'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { AGENT_IDS, PLUGIN_ASSET, RUNTIME_ASSET, parseAgentFile } from './agent-contract.ts'
+import { AGENT_IDS, GOAL_COMMAND_ASSET, PLUGIN_ASSET, RUNTIME_ASSET, TUI_PLUGIN_ASSET, parseAgentFile } from './agent-contract.ts'
 import { sha256 } from './fs.ts'
 import { verifyInstallation, verifyPluginRegistration } from './verify.ts'
 
@@ -19,8 +19,15 @@ const fixture = async () => {
     )
     const runtime = 'runtime fixture'
     const plugin = 'plugin fixture'
+    const tuiPlugin = 'tui plugin fixture'
+    const goalCommand = 'goal command fixture'
+    const claudeRule = join(root, 'claude/CLAUDE.md')
     await Bun.write(join(root, RUNTIME_ASSET), runtime)
     await Bun.write(join(root, PLUGIN_ASSET), plugin)
+    await Bun.write(join(root, TUI_PLUGIN_ASSET), tuiPlugin)
+    await Bun.write(join(root, GOAL_COMMAND_ASSET), goalCommand)
+    await Bun.write(claudeRule, 'Claude rule')
+    await symlink(claudeRule, join(root, 'AGENTS.md'))
     const agents = [
         ...definitions.map(({ id, mode, permissions, steps }) => ({ id, mode, permissions, steps })),
         { id: 'build', hidden: true, permissions: [] },
@@ -32,8 +39,21 @@ const fixture = async () => {
         ...['build', 'plan'].map((id) => ({ path: `agents/${id}.md`, sha256: sha256('hidden'), originSha256: sha256('hidden') })),
         { path: RUNTIME_ASSET, sha256: sha256(runtime), originSha256: sha256(runtime) },
         { path: PLUGIN_ASSET, sha256: sha256(plugin), originSha256: sha256(plugin) },
+        { path: TUI_PLUGIN_ASSET, sha256: sha256(tuiPlugin), originSha256: sha256(tuiPlugin) },
+        { path: GOAL_COMMAND_ASSET, sha256: sha256(goalCommand), originSha256: sha256(goalCommand) },
     ]
-    return { root, agents, manifest: { version: 'test', installedAt: new Date().toISOString(), files, models: {}, config: {} } }
+    return {
+        root,
+        agents,
+        manifest: {
+            version: 'test',
+            installedAt: new Date().toISOString(),
+            files,
+            links: [{ path: 'AGENTS.md', target: claudeRule }],
+            models: {},
+            config: {},
+        },
+    }
 }
 afterEach(async () => {
     await Promise.all([...roots].map((root) => rm(root, { recursive: true, force: true })))

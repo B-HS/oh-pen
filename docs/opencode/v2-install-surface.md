@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | config (전역) | `~/.config/opencode/opencode.json(c)` | `opencode debug config`로 확인 |
 | agents (전역) | `~/.config/opencode/agents/<name>.md` | 확인 |
-| plugins (전역) | `~/.config/opencode/plugins/<name>.js` | plugin list와 native child 실측 |
+| plugins (전역) | `~/.config/opencode/plugins/<name>/{index,tui}.js` | server·TUI plugin list와 native child 실측 |
 | instructions (전역) | `~/.config/opencode/AGENTS.md` | 문서 기준 |
 | skills (전역) | `~/.config/opencode/skills/<id>/SKILL.md` | 문서 기준 |
 | data | `~/.local/share/opencode` | `opencode debug paths` |
@@ -56,7 +56,7 @@
 
 ## 3. installer가 쓰는 파일
 
-전역 설치만 지원하므로 `~/.config/opencode/` 아래의 agents 디렉터리·config·oh-pencode 관리 디렉터리만 쓴다.
+전역 설치만 지원한다. OpenCode 관리 파일은 `~/.config/opencode/`에 쓰고, Claude Code 호환을 위해 기존 `~/.claude` 파일을 symlink하며 `~/.zshenv`의 프로젝트 instruction 비활성화 환경 한 줄을 관리한다.
 
 ```text
 ~/.config/opencode/opencode.jsonc
@@ -70,14 +70,21 @@
 ~/.config/opencode/agents/review-pen.md
 ~/.config/opencode/agents/build.md          (hidden)
 ~/.config/opencode/agents/plan.md           (hidden)
-~/.config/opencode/plugins/oh-pencode.js
+~/.config/opencode/plugins/oh-pencode/index.js
+~/.config/opencode/plugins/oh-pencode/tui.js
+~/.config/opencode/commands/goal.md
+~/.config/opencode/AGENTS.md                    -> ~/.claude/CLAUDE.md
+~/.config/opencode/commands/<entry>             -> ~/.claude/commands/<entry>
 ~/.config/opencode/oh-pencode/manifest.json
 ~/.config/opencode/oh-pencode/runtime.js
 ~/.config/opencode/oh-pencode/task.schema.json
 ~/.config/opencode/oh-pencode/result.schema.json
+~/.zshenv                                       (OPENCODE_DISABLE_PROJECT_CONFIG=1)
 ```
 
-총 10개 agent 파일(8 pen + build/plan hidden), plugin, runtime·schema, config, manifest다.
+총 10개 agent 파일(8 pen + build/plan hidden), server·TUI plugin, `/goal`, runtime·schema, config, manifest와 Claude 호환 연결이다.
+
+OpenCode V2는 `CLAUDE.md`와 `.claude/commands`를 자동 fallback하지 않는다. 전역 rule은 V2가 지원하는 `AGENTS.md` 경로로 연결하고, Claude command는 V2가 지원하는 `commands/` 경로로 연결한다. 공식 `OPENCODE_DISABLE_PROJECT_CONFIG=1`은 project `AGENTS.md` 탐색만 끄고 global file은 유지한다.
 
 ### 설정 병합 방식
 
@@ -103,11 +110,12 @@ installer는 `opencode.jsonc`를 **통째로 덮어쓰지 않는다.** 다음을
 {
   "version": "0.1.0",
   "installedAt": "2026-09-20T00:00:00.000Z",
-  "models": { "pen": "openai/gpt-5.6-sol#high" },
+  "models": { "pen": "openai/gpt-6-sol#xhigh" },
   "files": [
     { "path": "agents/pen.md", "sha256": "<설치된 내용 해시>", "originSha256": "<asset 원본 해시>" },
   ],
-  "config": { "defaultAgent": "pen", "rootModel": "openai/gpt-5.6-sol#high" },
+  "links": [{ "path": "AGENTS.md", "target": "/Users/<user>/.claude/CLAUDE.md" }],
+  "config": { "defaultAgent": "pen", "rootModel": "openai/gpt-6-sol#xhigh" },
 }
 ```
 

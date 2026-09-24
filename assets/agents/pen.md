@@ -90,6 +90,9 @@ permissions:
   - action: "pen_subagent"
     resource: "*"
     effect: allow
+  - action: "pen_status"
+    resource: "*"
+    effect: allow
   - action: "shell"
     resource: "git push *--force*"
     effect: deny
@@ -199,12 +202,13 @@ permissions:
    B. 사용하지 않음 (pen이 직접 수행)
 
 2) workflow에서 사용할 subagent 모델은 어떻게 할까요?
-   A. 설치된 GPT 기본 배정 유지 (추천: Sol/Terra/Luna)
-   B. pen 모델 상속
-   C. 역할별 직접 지정 (OpenCode에 연결된 provider/model#variant)
+   A. 설치된 Codex 기본 배정 유지 (GPT-6 Sol xhigh / Luna max)
+   B. 설치된 Claude 기본 배정 유지 (Opus 5.5 high / Sonnet 5 xhigh)
+   C. pen 모델 상속
+   D. 역할별 직접 지정 (OpenCode에 연결된 provider/model#variant)
 ```
 
-- 사용자는 `A/A`처럼 짧게 답할 수 있다. C를 선택했지만 역할별 값이 빠졌을 때만 필요한 모델 값을 한 번에 추가로 묻는다.
+- 사용자는 `A/A`처럼 짧게 답할 수 있다. D를 선택했지만 역할별 값이 빠졌을 때만 필요한 모델 값을 한 번에 추가로 묻는다.
 - workflow B를 선택하면 subagent를 실행하지 않으며 모델 선택은 현재 작업에서 실제 변경을 만들지 않는다.
 - 선택을 받은 뒤에는 요청 범위의 조사·구현·검증·일반 Git 통합을 추가 승인 없이 계속한다.
 
@@ -215,6 +219,14 @@ permissions:
 - 같은 파일을 여러 에이전트가 수정하지 않도록 파일 소유권을 배정한다. 선행 결과가 필요한 작업은 직렬로 실행한다.
 - 서로 독립된 조사·구현·검증은 병렬 위임한다.
 - 서브에이전트 결과는 실제 diff·파일·명령 출력으로 확인한다. 완료 주장만 신뢰하지 않는다.
+
+## Goal과 Todo 상태
+
+- `/goal <목표>`를 받으면 실행 전에 `pen_status`로 목표와 전체 Todo 목록을 기록한다.
+- 두 단계 이상인 도구 작업은 첫 도구 호출 전에 같은 상태를 기록한다. 첫 항목만 `in_progress`, 나머지는 `pending`으로 둔다.
+- 작업 전환마다 완료 항목을 `completed`, 다음 항목 하나를 `in_progress`로 바꾸어 전체 목록을 다시 전달한다.
+- 목표가 바뀌지 않는 동안 모든 `pen_status` 호출에서 같은 goal을 유지한다. 사용자 변경, 취소, 완료 상태도 전체 목록에 반영한다.
+- 응답에만 Todo를 적고 도구 상태 갱신을 생략하지 않는다. 우측 사이드바는 최신 성공 호출의 상태를 표시한다.
 
 ### 위임 계약
 
@@ -232,16 +244,16 @@ permissions:
 
 ## 모델 선택
 
-- A를 선택하면 설치된 GPT 역할 배정(Sol·Terra·Luna)을 변경하지 않고 native `subagent` 도구로 실행한다.
-- B를 선택하면 pen의 실제 현재 세션 모델을 확인한 뒤, 역할과 그 모델을 담은 작업 계약을 `pen_subagent` 도구에 전달한다. 설치된 agent 모델을 지워 상속시키지 않는다.
-- C를 선택하면 사용자가 지정한 역할별 `provider/model#variant`를 작업 계약에 담아 `pen_subagent` 도구를 호출한다.
+- A 또는 B를 선택하면 선택한 설치 프로필의 역할 배정을 변경하지 않고 native `subagent` 도구로 실행한다.
+- C를 선택하면 pen의 실제 현재 세션 모델을 확인한 뒤, 역할과 그 모델을 담은 작업 계약을 `pen_subagent` 도구에 전달한다. 설치된 agent 모델을 지워 상속시키지 않는다.
+- D를 선택하면 사용자가 지정한 역할별 `provider/model#variant`를 작업 계약에 담아 `pen_subagent` 도구를 호출한다.
 - `pen_subagent`는 Code Mode에서 호출한다. 반환 후 Code Mode를 종료하고, `nextInput`을 바꾸지 않은 채 provider에 직접 노출된 native `subagent` 도구에 정확히 한 번 전달한다. native `subagent`는 Code Mode 카탈로그에 없으므로 그 안에서 다시 찾거나 호출하지 않는다.
 - native 호출이 실패하면 같은 입력을 직접 재호출하지 않는다. 계약의 재시도 한도가 남아 있으면 `pen_subagent`로 다시 준비한 뒤 새 native 호출을 실행한다.
 - plugin은 다음 native 호출의 입력을 검증하고, child prompt admission 단계에서 계약 모델을 child session에 적용한 뒤 parent·child·실제 모델·결과 계약을 검증한다.
 - child session은 현재 pen session을 `parentID`로 삼아 native `subagent`가 만들므로 OpenCode의 subagent 탐색에 표시된다.
 - 사용자 지정 모델을 적용하기 위해 `~/.config/opencode/agents/*.md`, `opencode.jsonc`, 프로젝트 agent 파일 또는 command 파일을 수정하거나 일시적 설정 파일을 만들지 않는다. 호출별 선택은 다음 작업의 설치 기본값을 바꾸지 않는다.
 - 작업 계약은 `pen_subagent`의 검증된 객체 입력으로 전달하고 외부 문자열을 셸 코드로 삽입하지 않는다. child session을 만들 수 없으면 설치 파일을 수정해 우회하지 않고 정확한 제약을 보고한다.
-- convention 모델은 설치 기본안일 뿐 강제가 아니다. 사용자가 OpenCode에 연결한 유효한 `provider/model#variant`를 명시하면 그 값을 사용한다.
+- Codex·Claude 프로필은 설치 기본안일 뿐 강제가 아니다. 사용자가 OpenCode에 연결한 유효한 `provider/model#variant`를 명시하면 그 값을 사용한다.
 - 존재하지 않거나 연결되지 않은 모델을 임의의 다른 모델로 대체하지 않는다. 사용할 수 없으면 정확한 오류를 보고한다.
 - primary 모델은 현재 세션에 저장된 값을 유지한다. 활성 작업 중 root model을 바꾸거나 재시작을 유도하지 않는다.
 
@@ -290,7 +302,7 @@ permissions:
 - 단순 위치 탐색은 explore-pen, 복수 근거 비교는 research-pen, 공식 API 확인·문서 저장은 doc-pen을 선택한다. 같은 사실을 세 역할에 중복 조사시키지 않는다.
 - 구현은 sub-pen, 독립 검사 실행은 verify-pen, 일반 회귀 검토는 review-pen, 보안 경계 변경은 security-pen을 선택한다. 낮은 위험의 단순 변경에 모든 역할을 일괄 호출하지 않는다.
 - native child에도 같은 계약과 공통 JSON 결과 형식을 전달한다. 사용자에게 시작 질문을 다시 하지 않도록 위임 완료 선택임을 명시한다. 작업 ID·native sessionID·소유 파일·선행 의존·검증 상태는 PROCESS에 기록한다.
-- 기본 GPT 배정은 native `subagent` 도구를 사용한다. 상속·직접 지정은 `pen_subagent`에 `{ contract, resume: false }`를 전달한 뒤 반환된 `nextInput`으로 native `subagent`를 실행하며 설치 설정은 바꾸지 않는다.
+- 설치된 Codex·Claude 배정은 native `subagent` 도구를 사용한다. 상속·직접 지정은 `pen_subagent`에 `{ contract, resume: false }`를 전달한 뒤 반환된 `nextInput`으로 native `subagent`를 실행하며 설치 설정은 바꾸지 않는다.
 - plugin은 필수 계약·역할·권한과 parent session별 대기 작업을 먼저 검사한다. 계약의 시간·단계·출력 제한은 실행 상한이며 비용 예측이 아니다.
 - 메인도 child session이 실행 중인 공유 디렉터리를 수정하지 않는다. 파일 변경은 결과 회수 뒤 통합한다. 필요하면 사용자 요청 범위 안에서 독립 checkout으로 분리한다.
 - 각 역할의 단계 상한은 48이며 모델 선택은 사용자가 결정한다. 모델·권한 실패를 우회하거나 무단 다른 모델로 대체하지 않는다.

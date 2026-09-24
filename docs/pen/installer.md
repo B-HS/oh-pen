@@ -35,17 +35,19 @@ GitHub Pages는 파일만 서빙한다. 다음을 정적으로 배포한다.
 | --- | --- |
 | `index.html`, `docs/**/*.html`, `site.css` | 홈페이지와 사용·설계 문서 |
 | `install.sh`, `oh-pencode.ts` | curl 부트스트랩과 단일 installer 번들 |
-| `manifest.json` | 버전·13개 asset 목록·SHA-256 |
+| `manifest.json` | 버전·16개 asset 목록·SHA-256 |
 | `assets/agents/*.md` | pen·sub·research·explore·doc·verify·security·review 8종 |
 | `assets/agents/builtin/{build,plan}.md` | built-in 숨김 2종 |
 | `assets/oh-pencode/runtime.js` | 실행·취소·재개 도구 |
 | `assets/oh-pencode/{task,result}.schema.json` | 작업과 결과 계약 2종 |
+| `assets/plugins/oh-pencode/{index,tui}.js` | server tool과 우측 sidebar TUI plugin |
+| `assets/commands/goal.md` | `/goal` 전역 command |
 
 ### manifest.json
 
 ```jsonc
 {
-  "version": "0.2.0",
+  "version": "0.4.0",
   "releasedAt": "<빌드 시각 UTC ISO 8601>",
   "assets": [
     "agents/builtin/build.md",
@@ -83,7 +85,7 @@ GitHub Pages는 파일만 서빙한다. 다음을 정적으로 배포한다.
 curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash
 
 # 비대화형
-... | bash -s -- --no-interview --models convention
+... | bash -s -- --no-interview --models codex
 
 # 미리보기 (파일을 쓰지 않음)
 ... | bash -s -- --dry-run
@@ -104,7 +106,7 @@ curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash
 | --- | --- |
 | `--dry-run` | 쓸 파일과 diff를 출력만 한다 |
 | `--no-interview` | 인터뷰 없이 기본값으로 진행 (아래 §3 참조) |
-| `--models <mode>` | `convention` \| `inherit` (`custom` 문법은 미구현) |
+| `--models <mode>` | `codex` \| `claude` \| `inherit` (`convention`은 `codex` 호환 alias) |
 | `--force` | 사용자가 수정한 관리 파일도 덮는다 |
 | `--no-backup` | 백업을 생략한다 (권장하지 않음) |
 
@@ -116,19 +118,14 @@ curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash
 
 ```text
 1) 에이전트 모델을 어떻게 할까요?
-   A. 컨벤션 배정 (Sol/Terra/Luna)  [기본]
-   B. 부모 모델 상속 (model 미지정)
-   C. 직접 지정
+   A. Codex 배정 (GPT-6 Sol xhigh / Luna max)  [기본]
+   B. Claude 배정 (Opus 5.5 high / Sonnet 5 xhigh)
+   C. 부모 모델 상속 (model 미지정)
+   D. 직접 지정
 
-2) (C 선택 시) 에이전트별 모델을 입력하세요.
-   pen              : openai/gpt-5.6-sol#high
-   sub-pen          : openai/gpt-5.6-terra#medium
-   research-pen     : openai/gpt-5.6-luna#medium
-   explore-pen      : openai/gpt-5.6-luna#low
-   doc-pen          : openai/gpt-5.6-luna#high
-   verify-pen       : openai/gpt-5.6-luna#medium
-   security-pen     : openai/gpt-5.6-luna#high
-   review-pen       : openai/gpt-5.6-terra#high
+2) (D 선택 시) 에이전트별 모델을 입력하세요.
+   pen              : openai/gpt-6-sol#xhigh
+   sub-pen          : openai/gpt-6-luna#max
 
 3) build/plan 에이전트를 숨길까요?
    A. 숨김 (pen 단독 사용)  [기본]
@@ -139,15 +136,15 @@ curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash
    A. 바꿈  B. 유지
 
 5) pen의 세션 모델을 입력하세요 (root model — primary 세션에 실제 적용되는 값).
-   기본값: 기존 root model 또는 convention pen 모델
+   기본값: 선택한 프로필의 pen 모델
 
 6) 설치 요약을 보여주고 "이대로 설치할까요?" 최종 확인을 받는다.
 ```
 
-- 설치 시 인터뷰는 초기 GPT 역할 배정을 정한다. 이후 `pen`은 새 도구 작업마다 workflow와 모델 방식을 함께 묻고, 설치 배정을 추천 기본값으로 제시한다 (architecture.md §3~4).
-- convention은 추천 기본값일 뿐 강제가 아니다. `custom`을 선택하면 OpenCode에 연결한 임의의 `provider/model#variant`를 agent별로 입력할 수 있다.
+- 설치 시 인터뷰는 초기 Codex 또는 Claude 역할 배정을 정한다. 이후 `pen`은 새 도구 작업마다 workflow와 모델 방식을 함께 묻고, 설치 배정을 추천 기본값으로 제시한다 (architecture.md §3~4).
+- 설치 프로필은 추천 기본값일 뿐 강제가 아니다. `custom`을 선택하면 OpenCode에 연결한 임의의 `provider/model#variant`를 agent별로 입력할 수 있다.
 - 사용자가 작업에서 모델 상속이나 역할별 모델을 선택하면 `pen`은 bundled plugin으로 계약을 준비한 뒤 native `subagent` child에 해당 모델을 적용한다. 설치된 agent 파일은 변경하지 않으며 사용할 수 없는 모델을 다른 모델로 자동 대체하지 않는다.
-- `--no-interview`면 `default_agent=pen`과 root `model`은 **기존 값이 있으면 유지**하고, 나머지는 기본값(A: convention 배정, build/plan 숨김)으로 진행한다 (src/cli.ts `noInterviewAnswers`).
+- `--no-interview`면 기본값은 Codex 프로필과 build/plan 숨김이다. 이전 설치가 관리한 root model은 새 프로필 값으로 올리고, 사용자가 별도로 바꾼 root model은 보존한다.
 
 ---
 
@@ -166,12 +163,17 @@ curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash
 ~/.config/opencode/agents/review-pen.md
 ~/.config/opencode/agents/build.md      (hidden)
 ~/.config/opencode/agents/plan.md       (hidden)
-~/.config/opencode/plugins/oh-pencode.js
+~/.config/opencode/plugins/oh-pencode/index.js
+~/.config/opencode/plugins/oh-pencode/tui.js
+~/.config/opencode/commands/goal.md
+~/.config/opencode/AGENTS.md              -> ~/.claude/CLAUDE.md
+~/.config/opencode/commands/<entry>       -> ~/.claude/commands/<entry>
 ~/.config/opencode/opencode.jsonc       (default_agent, model 키만)
 ~/.config/opencode/oh-pencode/manifest.json
 ~/.config/opencode/oh-pencode/runtime.js
 ~/.config/opencode/oh-pencode/task.schema.json
 ~/.config/opencode/oh-pencode/result.schema.json
+~/.zshenv                               (OPENCODE_DISABLE_PROJECT_CONFIG=1 한 줄)
 ```
 
 ### opencode.jsonc 병합 규칙
@@ -186,7 +188,8 @@ curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash
 
 ### 멱등성
 
-- `agents/*.md`, plugin, 실행 도구, 계약 스키마는 installer 관리 파일이다. 재실행 시 사용자 변경 여부를 확인한 뒤 갱신한다.
+- `agents/*.md`, command, plugin, 실행 도구, 계약 스키마는 installer 관리 파일이다. 재실행 시 사용자 변경 여부를 확인한 뒤 갱신한다.
+- Claude rule·command는 원본을 복사하지 않고 symlink로 연결한다. 같은 대상에 사용자 파일이 있으면 덮어쓰지 않고 경고한다.
 - **사용자가 수정한 흔적이 있으면** (해시 불일치) 확인 질문 없이 자동 보존하고, 보존 사실을 경고로 출력한다 (src/install.ts: 기존 sha256과 디스크 해시 비교 → `preserved` + `warnings`).
 - 변경이 `model:` 줄뿐이면 사용자 지정 모델을 보존하면서 새 asset 본문과 permission을 갱신한다. model 줄을 제거해 이전 `originSha256`과 비교하므로 다른 본문 변경과 구분한다.
 - 갱신 뒤 manifest의 `models`는 설치 답변이 아니라 실제 설치 파일의 `model:` 값을 다시 읽어 기록하므로 verify 기대값과 일치한다.
@@ -198,6 +201,7 @@ curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash
 - manifest의 파일만 지운다. 해시가 다르면(사용자 수정) `--force` 없이는 보존한다.
 - `opencode.jsonc`의 `default_agent`·`model`은 **installer가 설치한 값과 일치할 때만** 되돌린다. 다른 값이면 건드리지 않고 경고한다.
 - 사용자가 수정한 파일은 지우지 않고 목록만 보고한다.
+- installer가 만든 Claude symlink만 제거하고 원본 `~/.claude/**`는 건드리지 않는다. `~/.zshenv`의 관리 환경 줄은 설치 전 값이 있으면 복원한다.
 
 ---
 
@@ -224,6 +228,7 @@ installer의 `verify` 단계에서 `opencode debug agents`를 JSON으로 파싱�
 - `default_agent`가 설치 때 선택한 값인지 (installer가 관리한 경우)
 - root `model`이 manifest에 기록된 값과 일치하는지 (manifest.config.rootModel에 기록된 경우)
 - plugin·runtime 번들을 포함한 설치 파일의 SHA-256이 manifest와 일치하는지
+- Claude rule·command symlink와 `/goal`, TUI plugin, `OPENCODE_DISABLE_PROJECT_CONFIG=1`이 설치 계약과 일치하는지
 
 실패하면 보고하고 종료한다. 실패 시 롤백은 **미구현**이다. 일부만 설치된 상태가 남을 수 있다.
 
@@ -277,7 +282,7 @@ bun run build:site
 1. `assets/**`를 복사하고 installer·plugin·runtime을 각각 Bun 단일 번들로 만든다.
 2. Zod 작업·결과 계약을 JSON Schema로 내보내 runtime과 함께 배치한다.
 3. `install.sh`, 홈페이지와 문서 페이지를 생성한다.
-4. installer와 13개 자산의 sha256을 manifest에 기록하고 역할 권한·공통 계약·빈 파일 검사를 수행한다.
+4. installer와 16개 자산의 sha256을 manifest에 기록하고 역할 권한·공통 계약·빈 파일 검사를 수행한다.
 
 GitHub Actions로 `main` push 시 `dist/`를 GitHub Pages에 배포한다.
 
@@ -314,10 +319,11 @@ bun run verify            # 설치 상태 검증
 | 버전 관리 | `dist/manifest.json`의 `version` = package.json의 `version` (빌드 시 고정) |
 | `*-pen` glob 허용 | pen 허용 목록에 glob을 넣지 않고 명시 목록으로 둔다 (사용자 결정, architecture.md §6) |
 
-## v0.3.0 설치 자산과 검증
+## v0.4.0 설치 자산과 검증
 
 - review-pen을 포함한 custom agent 8종과 built-in 숨김 2종을 배포합니다.
-- `plugins/oh-pencode.js`, `oh-pencode/runtime.js`, `task.schema.json`, `result.schema.json`을 같은 manifest와 백업·사용자 수정 보존·제거 체계로 관리합니다. 두 실행 번들은 설치 위치에 node_modules가 필요하지 않습니다.
+- `plugins/oh-pencode/{index,tui}.js`, `commands/goal.md`, `oh-pencode/runtime.js`, `task.schema.json`, `result.schema.json`을 같은 manifest와 백업·사용자 수정 보존·제거 체계로 관리합니다.
+- Claude Code의 global rule·command를 OpenCode V2 경로에 연결하고 프로젝트 `AGENTS.md` 탐색은 공식 환경 변수로 비활성화합니다.
 - 파일 존재뿐 아니라 runtime agent 등록·mode·hidden·모델(중첩 ID 포함)·권한 금지 경계와 실제 설치 파일 SHA-256을 확인합니다. 상속 모델과 선택적으로 유지한 default_agent도 설치 선택대로 검사합니다.
 - 배포 CI는 타입 검사·전체 회귀 검사·에셋 빌드를 수행합니다. PR에서는 검사만, main에서는 Pages 배포까지 진행합니다.
 - 실행·체크포인트·취소·근거 재사용은 [실행 도구 안내](runtime.md)를 참조합니다.

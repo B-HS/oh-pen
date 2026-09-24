@@ -1,5 +1,5 @@
 import { cancel, confirm, group, intro, isCancel, log, select, text } from "@clack/prompts"
-import { conventionModels, isValidModelRef, type AgentModels, type ModelMode } from "./models.ts"
+import { conventionModels, isValidModelRef, modelProfiles, type AgentModels, type ModelMode } from "./models.ts"
 
 export type InstallAnswers = {
   modelMode: ModelMode
@@ -10,6 +10,7 @@ export type InstallAnswers = {
   adoptDefaultAgent: boolean
   currentDefaultAgent: string | undefined
   currentRootModel: string | undefined
+  preserveCurrentRootModel: boolean
 }
 
 const modelEntries = Object.entries(conventionModels)
@@ -57,14 +58,19 @@ export const runInterview = async (context: {
           message: "모델 배정 방식을 선택하세요.",
           options: [
             {
-              value: "convention" as const,
-              label: "컨벤션 기본값",
-              hint: "Sol/Terra/Luna",
+              value: "codex" as const,
+              label: "Codex 기본값",
+              hint: "GPT-6 Sol xhigh / Luna max",
+            },
+            {
+              value: "claude" as const,
+              label: "Claude 기본값",
+              hint: "Opus 5.5 high / Sonnet 5 xhigh",
             },
             { value: "inherit" as const, label: "부모 모델 상속" },
             { value: "custom" as const, label: "직접 지정" },
           ],
-          initialValue: "convention" as const,
+          initialValue: "codex" as const,
         }),
       hideBuiltins: () =>
         confirm({
@@ -95,8 +101,8 @@ export const runInterview = async (context: {
   const modelMode = base.modelMode as ModelMode
   const models: AgentModels = {}
 
-  if (modelMode === "convention") {
-    Object.assign(models, conventionModels)
+  if (modelMode === "codex" || modelMode === "claude") {
+    Object.assign(models, modelProfiles[modelMode])
   }
 
   if (modelMode === "custom") {
@@ -105,10 +111,11 @@ export const runInterview = async (context: {
     }
   }
 
-  const rootModelFallback = models.pen ?? "openai/gpt-5.6-sol#high"
+  const rootModelFallback = models.pen ?? conventionModels.pen
+  const rootModelDefault = modelMode === "codex" || modelMode === "claude" ? rootModelFallback : context.currentRootModel ?? rootModelFallback
   const rootModel = await askModel(
     "pen 의 세션 모델 (root model — primary 세션에 실제 적용되는 값)",
-    context.currentRootModel ?? rootModelFallback,
+    rootModelDefault,
   )
 
   const summary = modelEntries.map(([agent]) => `  ${agent.padEnd(14)} ${models[agent] ?? "(상속)"}`).join("\n")
@@ -116,7 +123,7 @@ export const runInterview = async (context: {
   log.info(
     [
       "설치 요약",
-      `모델: ${modelMode === "convention" ? "컨벤션 배정" : modelMode === "inherit" ? "부모 상속" : "직접 지정"}`,
+      `모델: ${modelMode === "codex" ? "Codex 배정" : modelMode === "claude" ? "Claude 배정" : modelMode === "inherit" ? "부모 상속" : "직접 지정"}`,
       summary,
       `pen 세션 모델 (root): ${rootModel}`,
       `build/plan 숨김: ${base.hideBuiltins ? "예" : "아니오"}`,
@@ -139,5 +146,6 @@ export const runInterview = async (context: {
     adoptDefaultAgent: base.adoptDefaultAgent as boolean,
     currentDefaultAgent: context.currentDefaultAgent,
     currentRootModel: context.currentRootModel,
+    preserveCurrentRootModel: false,
   }
 }

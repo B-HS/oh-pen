@@ -41,6 +41,9 @@
 | D17 | 작업 시작 질문 | **새 도구 작업마다 workflow와 subagent 모델 방식을 함께 질문** | 기본 GPT 배정·pen 상속·역할별 연결 모델 중 선택, 재개 경계에서 재질문 |
 | D18 | 작업별 모델 적용 | ~~agent `.md` 수정 금지, `opencode run --agent --model` 호출별 지정~~ → **D19로 대체** | v2.0.10 당시 native child 모델 전환 경로를 찾지 못해 별도 CLI를 사용했던 결정 |
 | D19 | native child 호출별 모델 | **V2 plugin이 child prompt admission에서 session model을 전환** | native `subagent`가 `parentID`를 만들고 UI에 표시됨. 설치 agent·root 설정은 변경하지 않음 |
+| D20 | 모델 프로필 | **Codex는 Sol xhigh/Luna max, Claude는 Opus 5.5 high/Sonnet 5 xhigh** | main과 나머지 역할을 명시적으로 분리 |
+| D21 | Goal·Todo UI | **`/goal` + `pen_status` + TUI `sidebar.content`** | 세션 목표를 저장하고 최신 전체 Todo를 우측 sidebar에 표시 |
+| D22 | Claude Code 설정 | **global CLAUDE.md·commands를 V2 경로에 symlink하고 project AGENTS 탐색 비활성화** | V2에는 Claude fallback이 없으므로 공식 경로와 환경 변수를 사용 |
 
 ## 3. 전제 (실측으로 확인)
 
