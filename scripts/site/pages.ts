@@ -102,7 +102,7 @@ export const homePage = () =>
 </div>
 <section class="section" aria-labelledby="runtime-title">
   <div class="section-heading">
-    <div><p class="section-kicker">Available in v0.2</p><h2 class="section-title" id="runtime-title">Keep delegated work accountable.</h2></div>
+    <div><p class="section-kicker">Available in v0.4</p><h2 class="section-title" id="runtime-title">Keep delegated work accountable.</h2></div>
     <p class="section-lead">The bundled runtime manages task-specific model sessions. Native child agents keep the same work contract, with results checked by pen.</p>
   </div>
   <div class="workflow-grid">
@@ -177,6 +177,39 @@ ${specialists
           "One-off facts returned without creating duplicate docs",
       ])}
       <pre class="code-sample"><code>docs/references/&lt;topic&gt;.md</code></pre>
+    </div>
+  </div>
+</section>
+<section class="section" aria-labelledby="session-state-title">
+  <div class="section-heading">
+    <div><p class="section-kicker">Session continuity</p><h2 class="section-title" id="session-state-title">Keep the goal visible. Bring Claude Code with you.</h2></div>
+    <p class="section-lead">Version 0.4 adds a live Goal and Todo panel while mapping existing Claude Code rules and commands into the paths OpenCode V2 actually loads.</p>
+  </div>
+  <div class="split-panel">
+    <div>
+      <span class="panel-icon">${icon("list")}</span>
+      <h3>Live Goal and Todo sidebar</h3>
+      <p>Run one command to anchor the objective. The primary agent replaces the full Todo state after each transition, and the right sidebar reacts to the latest successful update.</p>
+      ${checkItems([
+          "One durable objective per session",
+          "At most one active Todo at a time",
+          "Pending, active, done, and cancelled states",
+          "Current state returned to every model context",
+      ])}
+      <pre class="code-sample"><code>/goal &lt;objective&gt;</code></pre>
+    </div>
+    <div>
+      <span class="panel-icon">${icon("workflow")}</span>
+      <h3>Claude Code rules and commands</h3>
+      <p>OpenCode V2 has no automatic Claude Code fallback. The installer creates live links for the global rule and every nested Markdown command, then disables project-specific OpenCode instructions.</p>
+      ${checkItems([
+          "CLAUDE.md exposed as the global AGENTS.md",
+          "Nested .claude/commands paths preserved",
+          "Project AGENTS.md discovery disabled",
+          "Managed links verified against the install manifest",
+      ])}
+      <pre class="code-sample"><code>~/.config/opencode/AGENTS.md -&gt; ~/.claude/CLAUDE.md</code></pre>
+      <p>Start a new terminal and OpenCode process after installation. See the <a href="docs/installer.html">installer guide</a> for the full file map.</p>
     </div>
   </div>
 </section>

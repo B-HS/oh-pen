@@ -8,7 +8,7 @@
 
 An autonomous agent system installer for OpenCode V2.
 
-[Install](#install) · [Agents](#agent-system) · [Models](#model-assignment) · [Execution and recovery](#execution-and-recovery) · [Documentation](https://b-hs.github.io/oh-pen/docs/index.html)
+[Install](#install) · [Agents](#agent-system) · [Models](#model-assignment) · [Goal and Claude compatibility](#goal-todo-and-claude-code-compatibility) · [Execution and recovery](#execution-and-recovery) · [Documentation](https://b-hs.github.io/oh-pen/docs/index.html)
 
 </div>
 
@@ -64,7 +64,7 @@ Use the Claude model profile instead:
 curl -fsSL https://b-hs.github.io/oh-pen/install.sh | bash -s -- --no-interview --models claude
 ```
 
-After installation, run `verify` below, open OpenCode in your project, and select `pen` if it is not already the default. Give it your task and answer the workflow/model choices. Existing non-empty default-agent and root-model settings are preserved in non-interactive mode.
+After installation, start a new terminal so the Claude-rule-only environment setting is active. Run `verify` below, open OpenCode in your project, and select `pen` if it is not already the default. Give it your task and answer the workflow/model choices. Existing non-empty default-agent and root-model settings are preserved in non-interactive mode.
 
 ### Lifecycle commands
 

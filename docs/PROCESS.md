@@ -1,5 +1,17 @@
 # PROCESS
 
+## 작업: README·웹 랜딩 v0.4 기능 노출 보강 (2026-09-24)
+
+- [x] a. README·랜딩·배포 소스 대조 — README에는 상세 내용이 있으나 상단 탐색이 누락됐고, 랜딩은 모델 문구만 갱신되어 Goal/Todo·Claude Code 호환이 직접 노출되지 않음을 확인
+- [x] b. README 탐색·설치 안내와 랜딩의 v0.4 Goal/Todo·Claude Code 호환 섹션 보강
+- [ ] c. 랜딩 회귀 검사·사이트 빌드·배포 확인 후 관련 파일 선별 commit·일반 push
+
+### 실행 계약
+
+- 사용자는 이번 후속에서도 workflow와 subagent를 사용하지 않도록 지정했으며 메인이 직접 수행합니다.
+- 기존 디자인 시스템과 레이아웃을 재사용하고, v0.4의 모델 프로필·`/goal`·sidebar·Claude rule/command 연결을 실제 구현과 일치하게 설명합니다.
+- 기준: 사용자 AGENTS 지시, `~/.codex/llm-rules/{ai-process,common,comments,git}.md`, 현재 README·사이트 생성기·v0.4 검증 기록.
+
 ## 작업: 모델 프로필·Claude 설정·Goal/Todo TUI 통합 (2026-09-24)
 
 - [x] a. OpenCode V2 공식 계약과 설치본 확인 — V2는 `CLAUDE.md`·`.claude/commands`를 자동 fallback하지 않으며 TUI plugin의 `sidebar.content` 확장은 지원함을 확인

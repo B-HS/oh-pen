@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { join } from "node:path"
 import { renderInstallScript } from "./build-site.ts"
+import { homePage } from "./site/pages.ts"
 
 const penAsset = await Bun.file(join(import.meta.dir, "..", "assets", "agents", "pen.md")).text()
 
@@ -17,6 +18,18 @@ describe("install bootstrap", () => {
   test("비대화형 설치는 터미널 없이 실행할 수 있다", () => {
     expect(script).toContain('if [ "$arg" = "--no-interview" ]')
     expect(script).toContain('INTERACTIVE=false')
+  })
+})
+
+describe("v0.4 랜딩 페이지", () => {
+  const page = homePage()
+
+  test("Goal sidebar와 Claude Code 호환을 직접 안내한다", () => {
+    expect(page).toContain("Available in v0.4")
+    expect(page).toContain("/goal &lt;objective&gt;")
+    expect(page).toContain("Live Goal and Todo sidebar")
+    expect(page).toContain("CLAUDE.md exposed as the global AGENTS.md")
+    expect(page).toContain("~/.config/opencode/AGENTS.md -&gt; ~/.claude/CLAUDE.md")
   })
 })
 
