@@ -6,7 +6,7 @@
 - [x] b. Claude/Codex 계열 기본 모델 프로필과 기존 관리 모델의 안전한 업그레이드 구현 — Codex Sol xhigh/Luna max, Claude Opus 5.5 high/Sonnet 5 xhigh, 사용자 override 보존
 - [x] c. Claude Code 전역 rule·command 연결, `/goal`, 세션 Todo tool과 우측 사이드바 실시간 표시 구현 — symlink·공식 project instruction 비활성화·server/TUI plugin 적용
 - [x] d. 설치·해시·권한·TUI·마이그레이션 회귀 검사와 실제 OpenCode 등록 검증 — 64 tests, typecheck, v0.4.0 16 assets, verify·command registry·TUI 기동 통과
-- [ ] e. 사용자 전역 설치 갱신, 관련 파일 선별 commit·일반 push
+- [x] e. 사용자 전역 설치 갱신, 관련 파일 선별 commit·일반 push — 구현 커밋 `b863896`, `main` push 완료
 
 ### 실행 계약
 
